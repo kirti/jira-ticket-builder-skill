@@ -1,0 +1,51 @@
+{
+  "name": "jira-ticket-builder-skill",
+  "version": "1.0.0",
+  "description": "Turns rough bug reports, feature asks, or full requirements documents into structured Jira tickets or a multi-page requirements portal with diagrams (business flow, architecture, UI flow, customer journey). Ships as a Claude Skill and as portable instructions for any LLM with code execution (ChatGPT, etc.).",
+  "bin": {
+    "jira-ticket-builder-skill": "bin/install.js"
+  },
+  "files": [
+    "skill",
+    "prompt",
+    "bin",
+    "docs",
+    "README.md",
+    "LICENSE"
+  ],
+  "keywords": [
+    "claude",
+    "claude-skill",
+    "claude-code",
+    "anthropic",
+    "chatgpt",
+    "custom-gpt",
+    "llm",
+    "ai-agent",
+    "mcp",
+    "jira",
+    "atlassian",
+    "requirements-engineering",
+    "business-analysis",
+    "user-stories",
+    "agile",
+    "scrum",
+    "product-management",
+    "traceability-matrix",
+    "architecture-diagram",
+    "requirements-to-jira"
+  ],
+  "author": "",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kirti/jira-ticket-builder-skill.git"
+  },
+  "homepage": "https://github.com/kirti/jira-ticket-builder-skill#readme",
+  "bugs": {
+    "url": "https://github.com/kirti/jira-ticket-builder-skill/issues"
+  },
+  "engines": {
+    "node": ">=14"
+  }
+}
