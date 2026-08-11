@@ -1,0 +1,862 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Requirements Portal</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Condensed:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap');
+
+  :root{
+    --paper:#F4F6F8; --panel:#FFFFFF; --ink:#1C2530; --ink-soft:#5A6B7A; --line:#D8DEE4;
+    --blue:#2E6E9E; --blue-soft:#E7F0F7; --amber:#B8862C; --amber-soft:#FBF1DF;
+    --moss:#3C7A5D; --moss-soft:#E6F2EC; --rust:#B5502E; --rust-soft:#FBEAE3;
+    --violet:#6E5A9E; --violet-soft:#EFEBF7;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0; background:var(--paper); color:var(--ink); font-family:'IBM Plex Sans',sans-serif; font-size:14px; line-height:1.55;}
+  h1,h2,h3,.label{font-family:'IBM Plex Sans Condensed',sans-serif; letter-spacing:.01em;}
+  .mono{font-family:'IBM Plex Mono',monospace;}
+  .app{display:flex; min-height:100vh;}
+
+  nav.rail{width:230px; flex-shrink:0; background:var(--panel); border-right:1px solid var(--line); padding:20px 0; position:sticky; top:0; height:100vh; overflow-y:auto;}
+  .rail-title{padding:0 20px 16px; border-bottom:1px solid var(--line); margin-bottom:8px;}
+  .rail-title .mono{font-size:11px; color:var(--blue); text-transform:uppercase; letter-spacing:.08em;}
+  .rail-title h1{font-size:18px; margin:4px 0 0; font-weight:700;}
+  .rail-item{display:flex; align-items:center; gap:10px; padding:8px 20px; cursor:pointer; color:var(--ink-soft); font-weight:500; font-size:13px; border-left:3px solid transparent; text-decoration:none;}
+  .rail-item .num{font-family:'IBM Plex Mono',monospace; font-size:10.5px; color:var(--line); width:18px;}
+  .rail-item:hover{background:var(--blue-soft); color:var(--ink);}
+  .rail-item.active{background:var(--blue-soft); color:var(--blue); border-left-color:var(--blue); font-weight:600;}
+  .rail-item.active .num{color:var(--blue);}
+
+  main{flex:1; padding:32px 40px; max-width:1160px;}
+  .view{display:none;} .view.active{display:block;}
+  .view-header{margin-bottom:24px;}
+  .view-header h2{font-size:22px; margin:0 0 4px;}
+  .view-header p{color:var(--ink-soft); margin:0; font-size:13.5px;}
+
+  .card-row{display:grid; grid-template-columns:repeat(auto-fit,minmax(140px,1fr)); gap:12px; margin-bottom:28px;}
+  .stat-card{background:var(--panel); border:1px solid var(--line); border-radius:6px; padding:16px;}
+  .stat-card .n{font-family:'IBM Plex Mono',monospace; font-size:26px; font-weight:500;}
+  .stat-card .l{color:var(--ink-soft); font-size:12px; text-transform:uppercase; letter-spacing:.05em; margin-top:2px;}
+  .stat-card.flag .n{color:var(--amber);} .stat-card.risk .n{color:var(--rust);} .stat-card.trace .n{color:var(--moss);}
+
+  .readiness{background:var(--panel); border:1px solid var(--line); border-radius:6px; padding:20px;}
+  .readiness h3{margin:0 0 14px; font-size:14px;}
+  .r-row{display:flex; align-items:center; gap:12px; margin-bottom:9px; font-size:12.5px;}
+  .r-row .r-label{width:170px; color:var(--ink-soft);}
+  .r-bar{flex:1; height:8px; background:var(--line); border-radius:4px; overflow:hidden;}
+  .r-fill{height:100%; background:var(--blue); border-radius:4px;}
+  .r-pct{width:38px; text-align:right; font-family:'IBM Plex Mono',monospace; color:var(--ink-soft);}
+
+  .req-item{background:var(--panel); border:1px solid var(--line); border-left:3px solid var(--blue); border-radius:4px; padding:12px 16px; margin-bottom:8px; display:flex; gap:14px; align-items:flex-start;}
+  .req-item .id{font-family:'IBM Plex Mono',monospace; font-size:11.5px; color:var(--blue); flex-shrink:0; width:64px; padding-top:2px;}
+  .req-item.nfr{border-left-color:var(--moss);} .req-item.nfr .id{color:var(--moss);}
+  .req-item .body{flex:1;}
+  .conf-badge{display:inline-block; font-size:9.5px; padding:1px 7px; border-radius:8px; font-weight:700; letter-spacing:.03em; margin-left:8px; vertical-align:middle;}
+  .conf-badge.confirmed{background:var(--moss-soft); color:var(--moss);}
+  .conf-badge.inferred{background:var(--amber-soft); color:var(--amber);}
+  .src-excerpt{font-size:11.5px; color:var(--ink-soft); margin-top:4px; font-style:italic;}
+
+  .subhead{font-size:13px; font-weight:700; margin:26px 0 10px; color:var(--ink); text-transform:uppercase; letter-spacing:.04em;}
+  .subhead:first-child{margin-top:0;}
+  .actor-chip{display:inline-block; background:var(--violet-soft); color:var(--violet); padding:4px 12px; border-radius:14px; font-size:12.5px; font-weight:600; margin:0 8px 8px 0;}
+  .flow-strip{display:flex; align-items:center; flex-wrap:wrap; gap:0; background:var(--panel); border:1px solid var(--line); border-radius:6px; padding:20px; margin-bottom:16px;}
+  .flow-box{background:var(--blue-soft); color:var(--blue); border-radius:5px; padding:8px 16px; font-size:12.5px; font-weight:600; white-space:nowrap;}
+  .flow-arrow{color:var(--line); font-size:18px; padding:0 10px;}
+  .flow-step{background:var(--panel); border:1px solid var(--line); border-left:3px solid var(--violet); border-radius:4px; padding:10px 16px; margin-bottom:6px; font-size:13px;}
+  .flow-step b{color:var(--violet);}
+
+  .story-grid{display:grid; grid-template-columns:repeat(auto-fill,minmax(300px,1fr)); gap:14px;}
+  .story-card{background:var(--panel); border:1px solid var(--line); border-radius:6px; padding:16px; cursor:pointer; position:relative; padding-left:20px;}
+  .story-card::before{content:''; position:absolute; left:0; top:14px; bottom:14px; width:3px; background:var(--blue); border-radius:2px;}
+  .story-card .sid{font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--blue);}
+  .story-card h4{margin:4px 0 8px; font-size:15px;}
+  .story-card .type-badge{display:inline-block; font-size:10.5px; padding:2px 8px; border-radius:10px; background:var(--blue-soft); color:var(--blue); font-weight:600; margin-bottom:8px; text-transform:uppercase; letter-spacing:.03em;}
+  .story-card .meta{display:flex; gap:14px; font-size:12px; color:var(--ink-soft); margin-top:10px; align-items:center; flex-wrap:wrap;}
+  .story-card .meta span{display:flex; align-items:center; gap:4px;}
+  .story-card .oq-flag{color:var(--amber); font-weight:600;}
+  .complete-bar{width:100%; height:5px; background:var(--line); border-radius:3px; margin-top:10px; overflow:hidden;}
+  .complete-fill{height:100%; background:var(--moss); border-radius:3px;}
+
+  .trace-thread{border-left:2px solid var(--blue); margin:14px 0 14px 6px; padding-left:16px;}
+  .trace-thread .t-node{position:relative; padding-bottom:14px;}
+  .trace-thread .t-node::before{content:''; position:absolute; left:-21px; top:4px; width:9px; height:9px; border-radius:50%; background:var(--blue);}
+  .trace-thread .t-node .t-label{font-size:11px; text-transform:uppercase; letter-spacing:.05em; color:var(--ink-soft);}
+
+  .backdrop{display:none; position:fixed; inset:0; background:rgba(28,37,48,.35); z-index:10;}
+  .backdrop.active{display:block;}
+  .drawer{position:fixed; top:0; right:0; width:560px; max-width:94vw; height:100vh; background:var(--panel); box-shadow:-8px 0 24px rgba(0,0,0,.12); z-index:11; overflow-y:auto; padding:28px; transform:translateX(100%); transition:transform .2s ease;}
+  .drawer.active{transform:translateX(0);}
+  .drawer .close{position:absolute; top:20px; right:24px; cursor:pointer; color:var(--ink-soft); font-size:20px; background:none; border:none;}
+  .drawer h3{font-size:18px; margin:20px 0 2px;}
+  .drawer .sec{margin-top:18px;}
+  .drawer .sec .sec-label{font-size:11px; text-transform:uppercase; letter-spacing:.06em; color:var(--blue); font-weight:600; margin-bottom:6px;}
+  .drawer ul{margin:4px 0; padding-left:18px;}
+  .ac-block{background:var(--paper); border-radius:4px; padding:10px 12px; margin-bottom:8px; font-size:12.5px;}
+  .ac-block b{color:var(--blue);}
+  .rationale-block{background:var(--violet-soft); color:var(--violet); border-radius:4px; padding:10px 12px; font-size:12.5px; font-style:italic;}
+  .api-block{background:var(--paper); border-radius:4px; padding:10px 12px; margin-bottom:6px; font-size:12px;}
+  .api-block .m{font-family:'IBM Plex Mono',monospace; color:var(--blue); font-weight:600;}
+  .dep-item{font-size:12.5px; padding:6px 0; border-bottom:1px solid var(--paper);}
+  .rel-badge{font-size:9.5px; padding:1px 7px; border-radius:8px; font-weight:700; margin-right:6px;}
+  .rel-badge.depends_on{background:var(--amber-soft); color:var(--amber);}
+  .rel-badge.blocks{background:var(--rust-soft); color:var(--rust);}
+  .rel-badge.relates_to{background:var(--blue-soft); color:var(--blue);}
+
+  .oq-row{background:var(--panel); border:1px solid var(--line); border-left:3px solid var(--amber); border-radius:4px; padding:12px 16px; margin-bottom:8px;}
+  .oq-row.ai .ai-tag{float:right; font-size:9.5px; background:var(--amber-soft); color:var(--amber); padding:2px 7px; border-radius:8px; font-weight:700; letter-spacing:.03em;}
+  .oq-row.sev-critical{border-left-color:var(--rust);}
+  .oq-row .q-text{font-weight:500;}
+  .oq-row .q-meta{font-size:11.5px; color:var(--ink-soft); margin-top:5px; display:flex; gap:10px; flex-wrap:wrap; align-items:center;}
+  .pill{display:inline-block; padding:1px 7px; border-radius:8px; font-size:10.5px; font-weight:600;}
+  .pill.blue{background:var(--blue-soft); color:var(--blue);}
+  .pill.sev-critical{background:var(--rust-soft); color:var(--rust);}
+  .pill.sev-high{background:var(--amber-soft); color:var(--amber);}
+  .pill.sev-medium{background:var(--blue-soft); color:var(--blue);}
+  .pill.sev-low{background:var(--moss-soft); color:var(--moss);}
+
+  table{width:100%; border-collapse:collapse; background:var(--panel); border:1px solid var(--line); border-radius:6px; overflow:hidden;}
+  th,td{padding:10px 14px; text-align:left; font-size:12.5px; border-bottom:1px solid var(--line); vertical-align:top;}
+  th{background:var(--paper); font-family:'IBM Plex Sans Condensed',sans-serif; text-transform:uppercase; font-size:11px; letter-spacing:.05em; color:var(--ink-soft);}
+  tr:last-child td{border-bottom:none;}
+  .covered-yes{color:var(--moss); font-weight:600;} .covered-no{color:var(--rust); font-weight:600;}
+  .trace-line{color:var(--blue); font-family:'IBM Plex Mono',monospace; font-size:11px;}
+
+  .a-item{background:var(--panel); border:1px solid var(--line); border-left:3px solid var(--moss); border-radius:4px; padding:12px 16px; margin-bottom:8px;}
+  .d-item{border-left-color:var(--violet);} .d-item .id{color:var(--violet);}
+  .r-item{border-left-color:var(--rust);}
+  .status-pill{float:right; font-size:10px; padding:2px 9px; border-radius:9px; font-weight:700;}
+  .status-pill.proposed{background:var(--blue-soft); color:var(--blue);}
+  .status-pill.pending{background:var(--amber-soft); color:var(--amber);}
+  .status-pill.approved{background:var(--moss-soft); color:var(--moss);}
+  .status-pill.rejected{background:var(--rust-soft); color:var(--rust);}
+
+  .empty{color:var(--ink-soft); font-style:italic; padding:20px 0;}
+  .search-box{width:100%; padding:9px 12px; border:1px solid var(--line); border-radius:5px; font-size:13px; margin-bottom:16px; font-family:inherit;}
+</style>
+</head>
+<body>
+<div class="app">
+  <nav class="rail" id="rail"></nav>
+  <main id="main"></main>
+</div>
+<div class="backdrop" id="backdrop"></div>
+<div class="drawer" id="drawer"></div>
+
+<script>
+/* Replace this fallback with the real decomposition JSON, or inject via
+   window.PORTAL_DATA = {...} in a script tag placed before this one. */
+const DATA = window.PORTAL_DATA || {
+  project:{name:"Sample Project", source_summary:"No data loaded.", generated_at:"", business_objectives:[], business_actors:[], business_flow:[]},
+  business_requirements:[], functional_requirements:[], non_functional_requirements:[], business_rules:[],
+  stories:[], open_questions:[], assumptions:[], decisions:[], risks:[], architecture:{flow:[],components:[],integration_points:[]},
+  dependencies:[], traceability:[],
+  readiness:{business_pct:0, requirements_pct:0, technical_context_pct:0, testing_pct:0, traceability_pct:0, story_completeness_avg_pct:0}
+};
+
+const VIEWS = [
+  {id:'overview', label:'Overview', file:'index.html'},
+  {id:'business', label:'Business Context', file:'business-context.html'},
+  {id:'journey', label:'Customer Journey', file:'customer-journey.html'},
+  {id:'requirements', label:'Requirements', file:'requirements.html'},
+  {id:'stories', label:'Stories', file:'stories.html'},
+  {id:'questions', label:'Open Questions', file:'open-questions.html'},
+  {id:'traceability', label:'Traceability', file:'traceability.html'},
+  {id:'architecture', label:'Architecture', file:'architecture.html'},
+  {id:'uiflow', label:'UI Flow', file:'ui-flow.html'},
+  {id:'assumptions', label:'Assumptions', file:'assumptions.html'},
+  {id:'decisions', label:'Decisions', file:'decisions.html'},
+  {id:'risks', label:'Risks', file:'risks.html'},
+];
+
+/* Set by the build script — which view this specific file renders. */
+const CURRENT_VIEW = "__CURRENT_VIEW__";
+
+function el(html){ const d=document.createElement('div'); d.innerHTML=html.trim(); return d.firstChild; }
+function esc(s){ return (s==null?'':s).toString().replace(/[&<>]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c])); }
+function confBadge(c){ return `<span class="conf-badge ${c==='confirmed'?'confirmed':'inferred'}">${c==='confirmed'?'CONFIRMED':'INFERRED'}</span>`; }
+
+function renderRail(){
+  const rail = document.getElementById('rail');
+  rail.innerHTML = `<div class="rail-title"><div class="mono">REQ.PORTAL</div><h1>${esc(DATA.project.name||'Requirements Portal')}</h1></div>`;
+  VIEWS.forEach((v,i)=>{
+    const isActive = v.id === CURRENT_VIEW;
+    const item = el(`<a class="rail-item ${isActive?'active':''}" href="${v.file}"><span class="num">${String(i+1).padStart(2,'0')}</span>${v.label}</a>`);
+    rail.appendChild(item);
+  });
+}
+
+const RENDERERS = {overview:renderOverview, business:renderBusiness, journey:renderCustomerJourney, requirements:renderRequirements, stories:renderStories,
+  questions:renderQuestions, traceability:renderTraceability, architecture:renderArchitecture, uiflow:renderUIFlow,
+  assumptions:renderAssumptions, decisions:renderDecisions, risks:renderRisks};
+
+
+
+function renderOverview(){
+  const m = document.getElementById('main');
+  const s = DATA.stories.length, q = DATA.open_questions.length,
+        aiQ = DATA.open_questions.filter(x=>x.origin==='ai_identified').length,
+        risks = DATA.risks.length;
+  const covered = DATA.traceability.filter(t=>t.covered).length;
+  const tracePct = DATA.traceability.length ? Math.round(100*covered/DATA.traceability.length) : 0;
+
+  m.appendChild(el(`<div class="view-header"><h2>Overview</h2><p>${esc(DATA.project.source_summary)}</p></div>`));
+  m.appendChild(el(`
+    <div class="card-row">
+      <div class="stat-card"><div class="n mono">${s}</div><div class="l">Stories</div></div>
+      <div class="stat-card flag"><div class="n mono">${q}</div><div class="l">Open Questions</div></div>
+      <div class="stat-card flag"><div class="n mono">${aiQ}</div><div class="l">AI-Identified Gaps</div></div>
+      <div class="stat-card risk"><div class="n mono">${risks}</div><div class="l">Risks</div></div>
+      <div class="stat-card trace"><div class="n mono">${tracePct}%</div><div class="l">Traceability</div></div>
+    </div>`));
+
+  const r = DATA.readiness || {};
+  const rows = [['Business',r.business_pct],['Requirements',r.requirements_pct],
+    ['Technical Context',r.technical_context_pct],['Testing',r.testing_pct],
+    ['Traceability',r.traceability_pct],['Avg. Story Completeness',r.story_completeness_avg_pct]];
+  const rHtml = rows.map(([label,pct])=>`
+    <div class="r-row"><div class="r-label">${label}</div>
+      <div class="r-bar"><div class="r-fill" style="width:${pct||0}%"></div></div>
+      <div class="r-pct mono">${pct||0}%</div></div>`).join('');
+  m.appendChild(el(`<div class="readiness"><h3>Delivery Readiness</h3>${rHtml}</div>`));
+}
+
+function renderBusiness(){
+  const m = document.getElementById('main');
+  const p = DATA.project;
+  m.appendChild(el(`<div class="view-header"><h2>Business Context</h2><p>Objectives, actors, rules, and process flow — the non-technical view of what's being built and why.</p></div>`));
+
+  m.appendChild(el(`<div class="subhead">Business Objectives</div>`));
+  (p.business_objectives||[]).length
+    ? (p.business_objectives||[]).forEach(o=>m.appendChild(el(`<div class="req-item"><div class="id">${esc(o.id)}</div><div class="body">${esc(o.text)}${confBadge(o.confidence)}</div></div>`)))
+    : m.appendChild(el(`<div class="empty">No objectives extracted.</div>`));
+
+  m.appendChild(el(`<div class="subhead">Business Actors</div>`));
+  const actorsWrap = el(`<div></div>`);
+  (p.business_actors||[]).length
+    ? (p.business_actors||[]).forEach(a=>actorsWrap.appendChild(el(`<span class="actor-chip" title="${esc(a.description)}">${esc(a.name)}</span>`)))
+    : actorsWrap.appendChild(el(`<div class="empty">No actors identified.</div>`));
+  m.appendChild(actorsWrap);
+
+  m.appendChild(el(`<div class="subhead">Business Rules</div>`));
+  (DATA.business_rules||[]).length
+    ? (DATA.business_rules||[]).forEach(r=>m.appendChild(el(`<div class="req-item"><div class="id">${esc(r.id)}</div><div class="body">${esc(r.text)}${confBadge(r.confidence)}<div class="src-excerpt">Affects: ${(r.story_ids||[]).join(', ')||'—'}</div></div></div>`)))
+    : m.appendChild(el(`<div class="empty">No business rules extracted.</div>`));
+
+  m.appendChild(el(`<div class="subhead">Business Flow Diagram</div>`));
+  m.appendChild(buildBusinessFlowDiagram(p.business_flow||[]));
+
+  m.appendChild(el(`<div class="subhead">Business Flow (Detail)</div>`));
+  (p.business_flow||[]).length
+    ? (p.business_flow||[]).forEach(f=>m.appendChild(el(`<div class="flow-step"><b>${f.step}.</b> ${esc(f.actor)} → ${esc(f.action)} <span style="color:var(--ink-soft);">(${esc(f.system)})</span></div>`)))
+    : m.appendChild(el(`<div class="empty">No process flow described in source.</div>`));
+}
+
+/* ---------- Diagram builders (SVG, generated from data) ---------- */
+
+const DIA = { boxW:150, boxH:56, gapX:64, rowH:150, pad:24 };
+
+function svgEl(tag, attrs){
+  const e = document.createElementNS('http://www.w3.org/2000/svg', tag);
+  for(const k in attrs) e.setAttribute(k, attrs[k]);
+  return e;
+}
+function svgText(x, y, text, cls, anchor){
+  const t = svgEl('text', {x, y, class:cls||'', 'text-anchor':anchor||'middle'});
+  t.textContent = text;
+  return t;
+}
+function wrapLines(text, maxChars){
+  const words = (text||'').split(' ');
+  const lines = []; let cur = '';
+  words.forEach(w=>{
+    // A single token longer than the whole line width (e.g. a long URL path with
+    // no spaces) needs hard character-breaking, not just word-wrap, or it silently
+    // overflows the box in the SVG.
+    while(w.length > maxChars){
+      if(cur){ lines.push(cur.trim()); cur = ''; }
+      lines.push(w.slice(0, maxChars-1)+'-');
+      w = w.slice(maxChars-1);
+    }
+    if((cur+' '+w).trim().length > maxChars){ lines.push(cur.trim()); cur = w; }
+    else cur = (cur+' '+w).trim();
+  });
+  if(cur) lines.push(cur.trim());
+  if(lines.length > 3){ lines[2] = lines[2].slice(0, maxChars-1)+'…'; }
+  return lines.slice(0,3);
+}
+
+function buildBusinessFlowDiagram(steps){
+  if(!steps.length) return el(`<div class="empty">No process flow to diagram.</div>`);
+  const n = steps.length;
+  const W = DIA.pad*2 + n*DIA.boxW + (n-1)*DIA.gapX;
+  const H = 190;
+  const svg = svgEl('svg', {viewBox:`0 0 ${W} ${H}`, width:'100%', style:'max-width:100%; background:#fff; border:1px solid var(--line); border-radius:6px;'});
+  svg.appendChild(defsArrow());
+
+  steps.forEach((s,i)=>{
+    const x = DIA.pad + i*(DIA.boxW+DIA.gapX);
+    const y = 70;
+    svg.appendChild(svgEl('rect',{x,y,width:DIA.boxW,height:DIA.boxH,rx:6,fill:'var(--blue-soft)',stroke:'var(--blue)','stroke-width':1}));
+    const actorLines = wrapLines(s.actor, 20);
+    actorLines.forEach((line,li)=> svg.appendChild(svgText(x+DIA.boxW/2, y+20+li*13, line, 'dia-actor')));
+    svg.appendChild(svgText(x+DIA.boxW/2, y-14, `Step ${s.step}`, 'dia-step-num'));
+    const actionLines = wrapLines(s.action, 26);
+    actionLines.forEach((line,li)=> svg.appendChild(svgText(x+DIA.boxW/2, y+DIA.boxH+16+li*13, line, 'dia-action')));
+    svg.appendChild(svgText(x+DIA.boxW/2, y+DIA.boxH+16+actionLines.length*13+12, s.system||'', 'dia-system'));
+    if(i < n-1){
+      const x1 = x+DIA.boxW, x2 = x+DIA.boxW+DIA.gapX;
+      svg.appendChild(svgEl('line',{x1, y1:y+DIA.boxH/2, x2:x2-4, y2:y+DIA.boxH/2, stroke:'var(--blue)','stroke-width':2,'marker-end':'url(#arrowhead)'}));
+    }
+  });
+  const wrap = el(`<div style="overflow-x:auto; margin-bottom:16px;"></div>`);
+  wrap.appendChild(svg);
+  injectDiaStyles(svg);
+  return wrap;
+}
+
+function buildCustomerJourneyDiagram(steps){
+  if(!steps.length) return el(`<div class="empty">No process flow to diagram.</div>`);
+  const n = steps.length;
+  const lanes = { customer: 55, ui: 175, backend: 295 };
+  const boxW = 150, boxH = 50, gapX = 64, pad = 24;
+  const W = pad*2 + n*(boxW+gapX);
+  const H = 360;
+  const svg = svgEl('svg', {viewBox:`0 0 ${W} ${H}`, width:'100%', style:'max-width:100%; background:#fff; border:1px solid var(--line); border-radius:6px;'});
+  svg.appendChild(defsArrow());
+
+  // Lane background bands + labels
+  const laneMeta = [
+    {key:'customer', y:lanes.customer, label:'CUSTOMER', color:'#F4F6F8'},
+    {key:'ui', y:lanes.ui, label:'UI', color:'#FAFBFC'},
+    {key:'backend', y:lanes.backend, label:'BACKEND', color:'#F4F6F8'},
+  ];
+  laneMeta.forEach(l=>{
+    svg.appendChild(svgEl('rect',{x:0, y:l.y-boxH/2-14, width:W, height:boxH+28, fill:l.color}));
+    const lbl = svgEl('text',{x:8, y:l.y-boxH/2-2, class:'dia-lane-label'});
+    lbl.textContent = l.label;
+    svg.appendChild(lbl);
+  });
+
+  function placeholderBox(x, y, text){
+    svg.appendChild(svgEl('rect',{x, y:y-boxH/2, width:boxW, height:boxH, rx:6, fill:'#fff', stroke:'var(--line)','stroke-width':1, 'stroke-dasharray':'3,3'}));
+    const t = svgText(x+boxW/2, y+4, text, 'dia-placeholder');
+    svg.appendChild(t);
+  }
+  function filledBox(x, y, lines, fill, stroke){
+    svg.appendChild(svgEl('rect',{x, y:y-boxH/2, width:boxW, height:boxH, rx:6, fill, stroke, 'stroke-width':1.3}));
+    const startY = y - (lines.length>1 ? (lines.length-1)*6 : 0);
+    lines.forEach((line,li)=> svg.appendChild(svgText(x+boxW/2, startY+li*12, line, 'dia-journey-text')));
+  }
+
+  steps.forEach((s,i)=>{
+    const x = pad + i*(boxW+gapX);
+    // Customer lane — always populated (actor + action)
+    filledBox(x, lanes.customer, [wrapLines(s.actor,20)[0]||'', ...wrapLines(s.action,24).slice(0,2)], 'var(--blue-soft)', 'var(--blue)');
+    // UI lane
+    if(s.ui_screen) filledBox(x, lanes.ui, wrapLines(s.ui_screen,20), '#EFEBF7', 'var(--violet)');
+    else placeholderBox(x, lanes.ui, 'No UI touch');
+    // Backend lane — only show system as a backend-ish fallback when there's truly no UI
+    // touchpoint this step (a pure backend-to-backend step); otherwise an unset api means
+    // no backend call happened yet, not "the UI system is somehow the backend."
+    if(s.api) filledBox(x, lanes.backend, wrapLines(s.api,22), 'var(--moss-soft)', 'var(--moss)');
+    else if(!s.ui_screen && s.system) filledBox(x, lanes.backend, wrapLines(s.system,20), 'var(--moss-soft)', 'var(--moss)');
+    else placeholderBox(x, lanes.backend, 'No backend call');
+
+    // Vertical connectors within the step
+    svg.appendChild(svgEl('line',{x1:x+boxW/2, y1:lanes.customer+boxH/2, x2:x+boxW/2, y2:lanes.ui-boxH/2, stroke:'var(--line)','stroke-width':1.5,'stroke-dasharray':'3,3'}));
+    svg.appendChild(svgEl('line',{x1:x+boxW/2, y1:lanes.ui+boxH/2, x2:x+boxW/2, y2:lanes.backend-boxH/2, stroke:'var(--line)','stroke-width':1.5,'stroke-dasharray':'3,3'}));
+
+    // Step number above customer lane
+    svg.appendChild(svgText(x+boxW/2, lanes.customer-boxH/2-6, `STEP ${s.step}`, 'dia-step-num'));
+
+    // Horizontal sequence arrow between steps (customer lane)
+    if(i < n-1){
+      const x2 = pad + (i+1)*(boxW+gapX);
+      svg.appendChild(svgEl('line',{x1:x+boxW, y1:lanes.customer, x2:x2-4, y2:lanes.customer, stroke:'var(--blue)','stroke-width':2,'marker-end':'url(#arrowhead)'}));
+    }
+  });
+
+  const wrap = el(`<div style="overflow-x:auto; margin-bottom:8px;"></div>`);
+  wrap.appendChild(svg);
+  injectDiaStyles(svg);
+  const legend = el(`<div style="font-size:11.5px; color:var(--ink-soft); margin-bottom:16px;">Dashed grey boxes mean that lane has no touchpoint at that step — not a missing data error.</div>`);
+  const container = el(`<div></div>`);
+  container.appendChild(wrap);
+  container.appendChild(legend);
+  return container;
+}
+
+function renderCustomerJourney(){
+  const m = document.getElementById('main');
+  m.appendChild(el(`<div class="view-header"><h2>Customer Journey</h2><p>The full stack per step — customer action, UI screen, and backend call together, not three separate diagrams to mentally merge.</p></div>`));
+  m.appendChild(buildCustomerJourneyDiagram(DATA.project.business_flow||[]));
+}
+
+function defsArrow(){
+
+
+  const defs = svgEl('defs',{});
+  const marker = svgEl('marker',{id:'arrowhead', markerWidth:8, markerHeight:8, refX:6, refY:4, orient:'auto'});
+  const path = svgEl('path',{d:'M0,0 L8,4 L0,8 Z', fill:'var(--blue)'});
+  marker.appendChild(path); defs.appendChild(marker);
+  const marker2 = svgEl('marker',{id:'arrowhead-violet', markerWidth:8, markerHeight:8, refX:6, refY:4, orient:'auto'});
+  const path2 = svgEl('path',{d:'M0,0 L8,4 L0,8 Z', fill:'var(--violet)'});
+  marker2.appendChild(path2); defs.appendChild(marker2);
+  const marker3 = svgEl('marker',{id:'arrowhead-amber', markerWidth:8, markerHeight:8, refX:6, refY:4, orient:'auto'});
+  const path3 = svgEl('path',{d:'M0,0 L8,4 L0,8 Z', fill:'var(--amber)'});
+  marker3.appendChild(path3); defs.appendChild(marker3);
+  return defs;
+}
+function injectDiaStyles(svg){
+  const style = svgEl('style',{});
+  style.textContent = `
+    .dia-actor{font:600 11px 'IBM Plex Sans',sans-serif; fill:var(--blue);}
+    .dia-step-num{font:700 9.5px 'IBM Plex Mono',monospace; fill:var(--ink-soft); text-transform:uppercase; letter-spacing:.04em;}
+    .dia-action{font:400 11px 'IBM Plex Sans',sans-serif; fill:var(--ink);}
+    .dia-system{font:400 10px 'IBM Plex Mono',monospace; fill:var(--ink-soft);}
+    .dia-comp-label{font:700 11.5px 'IBM Plex Sans Condensed',sans-serif; fill:var(--ink);}
+    .dia-comp-type{font:600 8.5px 'IBM Plex Mono',monospace; text-transform:uppercase; letter-spacing:.03em;}
+    .dia-edge-label{font:400 9.5px 'IBM Plex Sans',sans-serif; fill:var(--ink-soft);}
+    .dia-screen-label{font:700 12px 'IBM Plex Sans Condensed',sans-serif; fill:var(--ink);}
+    .dia-trigger-label{font:400 9.5px 'IBM Plex Sans',sans-serif; fill:var(--ink-soft);}
+    .dia-entry-badge{font:700 9px 'IBM Plex Mono',monospace; fill:#fff; text-anchor:middle;}
+    .dia-lane-label{font:700 9px 'IBM Plex Mono',monospace; fill:var(--ink-soft); text-transform:uppercase; letter-spacing:.05em;}
+    .dia-placeholder{font:400 9.5px 'IBM Plex Sans',sans-serif; fill:var(--ink-soft); font-style:italic; text-anchor:middle;}
+    .dia-journey-text{font:600 10px 'IBM Plex Sans',sans-serif; fill:var(--ink); text-anchor:middle;}
+  `;
+  svg.appendChild(style);
+}
+
+const COMP_COLOR = {
+  frontend: {fill:'#E7F0F7', stroke:'var(--blue)'},
+  api: {fill:'#EFEBF7', stroke:'var(--violet)'},
+  service: {fill:'#E6F2EC', stroke:'var(--moss)'},
+  database: {fill:'#FBF1DF', stroke:'var(--amber)'},
+  external: {fill:'#FBEAE3', stroke:'var(--rust)'},
+};
+
+function buildArchitectureDiagram(arch){
+  const flow = arch.flow||[];
+  const components = arch.components||[];
+  const points = arch.integration_points||[];
+  if(!flow.length && !components.length) return el(`<div class="empty">No architecture data to diagram.</div>`);
+
+  // Main row: the flow chain. Position each node.
+  const nodePos = {};
+  const n = flow.length;
+  flow.forEach((name,i)=>{
+    nodePos[name] = { x: DIA.pad + i*(DIA.boxW+DIA.gapX) + DIA.boxW/2, y: 60, type: 'flow' };
+  });
+
+  // Satellite components not already in the flow row.
+  const satellites = components.filter(c => !(c.name in nodePos));
+  const rowW = DIA.pad*2 + Math.max(n,1)*DIA.boxW + Math.max(n-1,0)*DIA.gapX;
+  const satW = satellites.length ? (rowW - DIA.pad*2) / satellites.length : 0;
+  satellites.forEach((c,i)=>{
+    nodePos[c.name] = { x: DIA.pad + satW*i + satW/2, y: 250, type: 'satellite' };
+  });
+
+  const W = Math.max(rowW, DIA.pad*2 + satellites.length*(DIA.boxW+20));
+  const H = satellites.length ? 380 : 160;
+  const svg = svgEl('svg', {viewBox:`0 0 ${W} ${H}`, width:'100%', style:'max-width:100%; background:#fff; border:1px solid var(--line); border-radius:6px;'});
+  svg.appendChild(defsArrow());
+
+  // Flow chain arrows
+  for(let i=0;i<n-1;i++){
+    const a = nodePos[flow[i]], b = nodePos[flow[i+1]];
+    svg.appendChild(svgEl('line',{x1:a.x+DIA.boxW/2, y1:a.y, x2:b.x-DIA.boxW/2-4, y2:b.y, stroke:'var(--blue)','stroke-width':2,'marker-end':'url(#arrowhead)'}));
+  }
+
+  // Integration point edges (curved, since they may connect flow<->satellite).
+  // The control point is biased toward the destination's own x position (not the
+  // midpoint between source and destination) so that when many edges share the same
+  // source, they fan out to match their spread-out destinations instead of all
+  // converging into one illegible cluster of overlapping labels near the source.
+  points.forEach((p,idx)=>{
+    const a = nodePos[p.from], b = nodePos[p.to];
+    if(!a || !b) return; // orphan edge — name didn't resolve
+    const isAsync = (p.type||'').toLowerCase()==='async';
+    const ctrlX = a.x + (b.x-a.x)*0.75;
+    // Stagger control-point height in 3 tiers by edge index so that edges whose
+    // destinations sit close together (common with several satellite services)
+    // don't all land at the same y and pile their labels on top of each other.
+    const tier = idx % 3;
+    const ctrlY = a.y + (b.y-a.y)*(0.32 + tier*0.14);
+    const path = svgEl('path',{
+      d:`M${a.x},${a.y+ (a.y<b.y?DIA.boxH/2:-DIA.boxH/2)} Q${ctrlX},${ctrlY} ${b.x},${b.y+(b.y>a.y?-DIA.boxH/2:DIA.boxH/2)}`,
+      fill:'none', stroke: isAsync?'var(--amber)':'var(--violet)', 'stroke-width':1.5,
+      'stroke-dasharray': isAsync?'4,3':'none',
+      'marker-end': isAsync?'url(#arrowhead-amber)':'url(#arrowhead-violet)'
+    });
+    svg.appendChild(path);
+    if(p.label){
+      const t = svgText(ctrlX, ctrlY-6, p.label, 'dia-edge-label');
+      svg.appendChild(t);
+    }
+  });
+
+  // Boxes on top
+  Object.keys(nodePos).forEach(name=>{
+    const pos = nodePos[name];
+    const comp = components.find(c=>c.name===name);
+    const colors = COMP_COLOR[comp?comp.type:'external'] || COMP_COLOR.external;
+    const x = pos.x - DIA.boxW/2, y = pos.y - DIA.boxH/2;
+    svg.appendChild(svgEl('rect',{x,y,width:DIA.boxW,height:DIA.boxH,rx:6,fill:colors.fill,stroke:colors.stroke,'stroke-width':1.3}));
+    const lines = wrapLines(name, 20);
+    const startY = pos.y - (lines.length>1?6:0);
+    lines.forEach((line,li)=> svg.appendChild(svgText(pos.x, startY+li*13, line, 'dia-comp-label')));
+    if(comp){
+      const typeLabel = svgEl('text',{x:pos.x, y:y+DIA.boxH-6, class:'dia-comp-type', 'text-anchor':'middle', fill:colors.stroke});
+      typeLabel.textContent = comp.type;
+      svg.appendChild(typeLabel);
+    }
+  });
+
+  const wrap = el(`<div style="overflow-x:auto; margin-bottom:16px;"></div>`);
+  wrap.appendChild(svg);
+  injectDiaStyles(svg);
+  return wrap;
+}
+
+function buildUIFlowDiagram(stories){
+  const screens = [];
+  const edges = [];
+  stories.forEach(s=>{
+    const ui = (s.technical_context||{}).ui_spec || {};
+    if(ui.screen && ui.screen!=='n/a' && !screens.includes(ui.screen)) screens.push(ui.screen);
+  });
+  stories.forEach(s=>{
+    const ui = (s.technical_context||{}).ui_spec || {};
+    (ui.navigates_to||[]).forEach(nav=>{
+      if(!screens.includes(nav.to)) screens.push(nav.to);
+      edges.push({from: ui.screen, to: nav.to, trigger: nav.trigger});
+    });
+  });
+  if(!screens.length) return el(`<div class="empty">No UI screens with navigation data to diagram.</div>`);
+
+  const nodePos = {};
+  screens.forEach((name,i)=>{
+    nodePos[name] = { x: DIA.pad + i*(DIA.boxW+DIA.gapX+40) + DIA.boxW/2, y: 130 };
+  });
+  const W = DIA.pad*2 + screens.length*(DIA.boxW+DIA.gapX+40);
+  // Height needs to scale with the busiest screen pair — more shared edges means
+  // taller stacked lanes, so a fixed height would clip labels on complex flows.
+  const maxGroupSize = edges.length ? Math.max(...Object.values(
+    edges.reduce((acc,ed)=>{ const k=[ed.from,ed.to].sort().join('|||'); acc[k]=(acc[k]||0)+1; return acc; }, {})
+  )) : 1;
+  const H = 200 + maxGroupSize*40;
+  const svg = svgEl('svg', {viewBox:`0 0 ${W} ${H}`, width:'100%', style:'max-width:100%; background:#fff; border:1px solid var(--line); border-radius:6px;'});
+  svg.appendChild(defsArrow());
+
+  // Detect all edges that share the same unordered node-pair (regardless of
+  // direction) so every one of them gets its own lane — not just forward/back
+  // pairs. Two same-direction edges (e.g. "Save draft" and "Submit" both going
+  // Report → Dashboard) need separating just as much as a forward/back pair does.
+  const pairKey = (x,y) => [x,y].sort().join('|||');
+  const pairEdges = {};
+  edges.forEach(ed=>{ const k = pairKey(ed.from, ed.to); (pairEdges[k]=pairEdges[k]||[]).push(ed); });
+
+  edges.forEach((ed,i)=>{
+    const a = nodePos[ed.from], b = nodePos[ed.to];
+    if(!a || !b) return;
+    const forward = a.x < b.x;
+    const group = pairEdges[pairKey(ed.from, ed.to)];
+    const idxInGroup = group.indexOf(ed);
+    const count = group.length;
+    const spread = 16;
+    const anchorOffset = count > 1 ? (-spread + (2*spread/(count-1))*idxInGroup) : 0;
+    // Height must be unique per edge index, not derived from |anchorOffset| — two
+    // symmetric offsets (e.g. -5 and +5) have the same absolute value and would
+    // otherwise collapse onto the same curve height, colliding their labels even
+    // though their anchor points differ.
+    const curveHeight = 42 + idxInGroup*20;
+    const curveY = forward ? Math.min(a.y,b.y) - curveHeight : Math.max(a.y,b.y) + curveHeight;
+    const midX = (a.x+b.x)/2;
+    const startX = a.x + (forward? DIA.boxW/2 : -DIA.boxW/2);
+    const endX = b.x + (forward? -DIA.boxW/2-4 : DIA.boxW/2+4);
+    const startY = a.y + anchorOffset;
+    const endY = b.y + anchorOffset;
+    const color = forward ? 'var(--blue)' : 'var(--violet)';
+    const marker = forward ? 'url(#arrowhead)' : 'url(#arrowhead-violet)';
+    const path = svgEl('path',{
+      d:`M${startX},${startY} Q${midX},${curveY} ${endX},${endY}`,
+      fill:'none', stroke:color, 'stroke-width':2,
+      'stroke-dasharray': forward ? 'none' : '5,3',
+      'marker-end': marker
+    });
+    svg.appendChild(path);
+    const labelY = forward ? curveY - 8 : curveY + 16;
+    const t = svgText(midX, labelY, ed.trigger||'', 'dia-trigger-label');
+    t.setAttribute('fill', forward ? 'var(--blue)' : 'var(--violet)');
+    svg.appendChild(t);
+  });
+
+  screens.forEach((name,i)=>{
+    const pos = nodePos[name];
+    const x = pos.x - DIA.boxW/2, y = pos.y - DIA.boxH/2;
+    svg.appendChild(svgEl('rect',{x,y,width:DIA.boxW,height:DIA.boxH,rx:6,fill:'var(--blue-soft)',stroke:'var(--blue)','stroke-width':1.3}));
+    const lines = wrapLines(name, 20);
+    const startY = pos.y - (lines.length>1?6:2);
+    lines.forEach((line,li)=> svg.appendChild(svgText(pos.x, startY+li*14, line, 'dia-screen-label')));
+    if(i===0){
+      const badge = svgEl('rect',{x:x, y:y-22, width:44, height:16, rx:8, fill:'var(--moss)'});
+      svg.appendChild(badge);
+      const badgeText = svgText(x+22, y-10, 'ENTRY', 'dia-entry-badge');
+      svg.appendChild(badgeText);
+    }
+  });
+
+  const wrap = el(`<div style="overflow-x:auto; margin-bottom:8px;"></div>`);
+  wrap.appendChild(svg);
+  injectDiaStyles(svg);
+  const legend = el(`<div style="display:flex; gap:20px; font-size:11.5px; color:var(--ink-soft); margin-bottom:16px;">
+    <span><svg width="20" height="8" style="vertical-align:middle;"><line x1="0" y1="4" x2="20" y2="4" stroke="var(--blue)" stroke-width="2"/></svg> Forward navigation</span>
+    <span><svg width="20" height="8" style="vertical-align:middle;"><line x1="0" y1="4" x2="20" y2="4" stroke="var(--violet)" stroke-width="2" stroke-dasharray="4,2"/></svg> Back navigation</span>
+  </div>`);
+  const container = el(`<div></div>`);
+  container.appendChild(wrap);
+  container.appendChild(legend);
+  return container;
+}
+
+function renderUIFlow(){
+  const m = document.getElementById('main');
+  m.appendChild(el(`<div class="view-header"><h2>UI Flow</h2><p>Screen-to-screen navigation across all stories with a UI surface.</p></div>`));
+  m.appendChild(buildUIFlowDiagram(DATA.stories||[]));
+  const anyNav = (DATA.stories||[]).some(s=>((s.technical_context||{}).ui_spec||{}).navigates_to && (s.technical_context||{}).ui_spec.navigates_to.length);
+  if(!anyNav) m.appendChild(el(`<div class="empty" style="margin-top:8px;">No navigation transitions defined yet — add ui_spec.navigates_to to stories to populate this diagram.</div>`));
+}
+
+function renderRequirements(){
+
+
+  const m = document.getElementById('main');
+  m.appendChild(el(`<div class="view-header"><h2>Requirements</h2><p>Extracted from the source document. Every story must trace back to one of these. CONFIRMED = stated in source; INFERRED = concluded from context.</p></div>`));
+  const all = [...DATA.business_requirements.map(r=>({...r,_t:'BR'})),
+               ...DATA.functional_requirements.map(r=>({...r,_t:'FR'})),
+               ...DATA.non_functional_requirements.map(r=>({...r,_t:'NFR', text:`[${r.category}] ${r.text}`}))];
+  if(!all.length){ m.appendChild(el(`<div class="empty">No requirements extracted yet.</div>`)); return; }
+  all.forEach(r=>{
+    m.appendChild(el(`<div class="req-item ${r._t==='NFR'?'nfr':''}"><div class="id">${esc(r.id)}</div><div class="body">${esc(r.text)}${confBadge(r.confidence)}${r.source_excerpt?`<div class="src-excerpt">"${esc(r.source_excerpt)}"</div>`:''}</div></div>`));
+  });
+}
+
+function renderStories(){
+  const m = document.getElementById('main');
+  m.appendChild(el(`<div class="view-header"><h2>Stories</h2><p>Click a story for full detail: acceptance criteria, UI spec, APIs, testing, CI/CD notes, and its trace back to source.</p></div>`));
+  const search = el(`<input class="search-box" placeholder="Search stories...">`);
+  m.appendChild(search);
+  const grid = el(`<div class="story-grid"></div>`);
+  m.appendChild(grid);
+
+  function draw(filter){
+    grid.innerHTML = '';
+    const f = (filter||'').toLowerCase();
+    const list = DATA.stories.filter(s => !f || s.title.toLowerCase().includes(f) || s.id.toLowerCase().includes(f));
+    if(!list.length){ grid.appendChild(el(`<div class="empty">No stories match.</div>`)); return; }
+    list.forEach(s=>{
+      const oqCount = (s.open_question_ids||[]).length;
+      const pct = s.completeness_pct||0;
+      const card = el(`
+        <div class="story-card">
+          <div class="sid mono">${esc(s.id)}</div>
+          <div class="type-badge">${esc(s.type)}</div>
+          <h4>${esc(s.title)}</h4>
+          <div class="meta">
+            <span>${(s.acceptance_criteria||[]).length} AC</span>
+            ${oqCount ? `<span class="oq-flag">⚑ ${oqCount} open</span>` : ''}
+          </div>
+          <div class="complete-bar"><div class="complete-fill" style="width:${pct}%"></div></div>
+        </div>`);
+      card.onclick = ()=>openStoryDrawer(s);
+      grid.appendChild(card);
+    });
+  }
+  draw('');
+  search.oninput = ()=>draw(search.value);
+}
+
+function openStoryDrawer(s){
+  const d = document.getElementById('drawer');
+  const relatedQ = DATA.open_questions.filter(q=>(s.open_question_ids||[]).includes(q.id));
+  const acHtml = (s.acceptance_criteria||[]).map(ac=>`
+    <div class="ac-block"><b>Given</b> ${esc(ac.given)}<br><b>When</b> ${esc(ac.when)}<br><b>Then</b> ${esc(ac.then)}</div>`).join('') || '<div class="empty">None specified.</div>';
+  const tc = s.technical_context||{};
+  const apiHtml = (tc.apis||[]).length ? tc.apis.map(a=> typeof a==='string' ? `<div class="api-block">${esc(a)}</div>` :
+    `<div class="api-block"><span class="m">${esc(a.method)} ${esc(a.path)}</span><br>Request: ${esc(a.request)||'—'}<br>Response: ${esc(a.response)||'—'}<br>Auth: ${esc(a.auth)||'—'}</div>`).join('') : '<div class="empty">None identified.</div>';
+  const ui = tc.ui_spec||{};
+  const testing = tc.testing||{};
+  const depHtml = (s.dependencies||[]).length ? s.dependencies.map(dep=> typeof dep==='string' ? `<div class="dep-item">${esc(dep)}</div>` :
+    `<div class="dep-item"><span class="rel-badge ${esc(dep.relationship)}">${esc((dep.relationship||'').replace('_',' '))}</span>${esc(dep.story_id)} — ${esc(dep.reason)}</div>`).join('') : '<div class="empty">None</div>';
+
+  d.innerHTML = `
+    <button class="close" onclick="closeDrawer()">&times;</button>
+    <div class="sid mono" style="color:var(--blue); font-size:12px;">${esc(s.id)} · ${s.completeness_pct||0}% complete</div>
+    <h3>${esc(s.title)}</h3>
+    <div class="type-badge">${esc(s.type)}</div>
+
+    <div class="trace-thread">
+      <div class="t-node"><div class="t-label">Source Requirement</div>${(s.source_requirement_ids||[]).join(', ')||'—'}</div>
+      <div class="t-node"><div class="t-label">Story</div>${esc(s.id)}</div>
+      <div class="t-node"><div class="t-label">Acceptance Criteria</div>${(s.acceptance_criteria||[]).length} defined</div>
+    </div>
+
+    ${s.decomposition_rationale ? `<div class="sec"><div class="sec-label">Why This Is Its Own Story</div><div class="rationale-block">${esc(s.decomposition_rationale)}</div></div>` : ''}
+    <div class="sec"><div class="sec-label">User Story</div>${esc(s.user_story)}</div>
+    <div class="sec"><div class="sec-label">Description</div>${esc(s.description)}</div>
+    <div class="sec"><div class="sec-label">In Scope</div><ul>${(s.in_scope||[]).map(x=>`<li>${esc(x)}</li>`).join('')||'<li class="empty">Not specified</li>'}</ul></div>
+    <div class="sec"><div class="sec-label">Out of Scope</div><ul>${(s.out_of_scope||[]).map(x=>`<li>${esc(x)}</li>`).join('')||'<li class="empty">Not specified</li>'}</ul></div>
+    <div class="sec"><div class="sec-label">Acceptance Criteria</div>${acHtml}</div>
+
+    <div class="sec"><div class="sec-label">UI / UX</div>
+      ${ui.screen && ui.screen!=='n/a' ? `<ul>
+        <li><b>Screen:</b> ${esc(ui.screen)}</li>
+        <li><b>Components:</b> ${(ui.components||[]).join(', ')||'—'}</li>
+        <li><b>Fields:</b> ${(ui.fields||[]).join(', ')||'—'}</li>
+        <li><b>States:</b> ${(ui.states||[]).join(', ')||'—'}</li>
+      </ul>` : '<div class="empty">No UI surface for this story.</div>'}
+    </div>
+
+    <div class="sec"><div class="sec-label">Backend / APIs</div>${apiHtml}</div>
+
+    <div class="sec"><div class="sec-label">Technical Context</div>
+      <ul>
+        <li><b>Affected systems:</b> ${(tc.affected_systems||[]).join(', ')||'none identified'}</li>
+        <li><b>Data:</b> ${(tc.data||[]).join(', ')||'none identified'}</li>
+        <li><b>Security:</b> ${(tc.security||[]).join(', ')||'none identified'}</li>
+      </ul>
+    </div>
+
+    <div class="sec"><div class="sec-label">Testing</div>
+      <ul>
+        <li><b>Unit:</b> ${(testing.unit||[]).join(', ')||'—'}</li>
+        <li><b>Integration:</b> ${(testing.integration||[]).join(', ')||'—'}</li>
+        <li><b>API:</b> ${(testing.api||[]).join(', ')||'—'}</li>
+        <li><b>E2E:</b> ${(testing.e2e||[]).join(', ')||'—'}</li>
+      </ul>
+    </div>
+
+    <div class="sec"><div class="sec-label">CI/CD Notes</div>${(tc.cicd||[]).length ? `<ul>${tc.cicd.map(c=>`<li>${esc(c)}</li>`).join('')}</ul>` : '<div class="empty">None specific to this story.</div>'}</div>
+
+    <div class="sec"><div class="sec-label">Open Questions Affecting This Story</div>
+      ${relatedQ.length ? relatedQ.map(q=>`<div class="oq-row ${q.origin==='ai_identified'?'ai':''}"><div class="q-text">${esc(q.question)}</div><div class="q-meta"><span class="pill sev-${(q.severity||'').toLowerCase()}">${esc(q.severity||'')}</span><span>Owner: ${esc(q.owner||'Unassigned')}</span></div></div>`).join('') : '<div class="empty">None</div>'}
+    </div>
+    <div class="sec"><div class="sec-label">Dependencies & Relationships</div>${depHtml}</div>
+  `;
+  document.getElementById('backdrop').classList.add('active');
+  d.classList.add('active');
+}
+function closeDrawer(){
+  document.getElementById('backdrop').classList.remove('active');
+  document.getElementById('drawer').classList.remove('active');
+}
+document.getElementById('backdrop').onclick = closeDrawer;
+
+function renderQuestions(){
+  const m = document.getElementById('main');
+  m.appendChild(el(`<div class="view-header"><h2>Open Questions</h2><p>Includes questions stated in the source doc and gaps identified during analysis, with severity and owner.</p></div>`));
+  if(!DATA.open_questions.length){ m.appendChild(el(`<div class="empty">No open questions.</div>`)); return; }
+  const order = {Critical:0,High:1,Medium:2,Low:3};
+  const sorted = [...DATA.open_questions].sort((a,b)=>(order[a.severity]??9)-(order[b.severity]??9));
+  sorted.forEach(q=>{
+    m.appendChild(el(`
+      <div class="oq-row ${q.origin==='ai_identified'?'ai':''} sev-${(q.severity||'').toLowerCase()}">
+        ${q.origin==='ai_identified' ? '<span class="ai-tag">AI-IDENTIFIED</span>' : ''}
+        <div class="q-text mono" style="font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--amber);">${esc(q.id)}</div>
+        <div class="q-text">${esc(q.question)}</div>
+        <div class="q-meta">
+          <span class="pill blue">${esc(q.area)}</span>
+          <span class="pill sev-${(q.severity||'').toLowerCase()}">${esc(q.severity||'Unrated')}</span>
+          <span>Owner: ${esc(q.owner||'Unassigned')}</span>
+          <span>${esc(q.impact||'')}</span>
+          <span>Affects: ${(q.story_ids||[]).join(', ')||'—'}</span>
+        </div>
+      </div>`));
+  });
+}
+
+function renderTraceability(){
+  const m = document.getElementById('main');
+  m.appendChild(el(`<div class="view-header"><h2>Traceability Matrix</h2><p>Every source requirement mapped to the stories that implement it, with the originating excerpt.</p></div>`));
+  if(!DATA.traceability.length){ m.appendChild(el(`<div class="empty">No traceability data.</div>`)); return; }
+  const rows = DATA.traceability.map(t=>`
+    <tr>
+      <td class="trace-line">${esc(t.requirement_id)}</td>
+      <td style="font-style:italic; color:var(--ink-soft);">${esc(t.source_excerpt||'—')}</td>
+      <td>${(t.story_ids||[]).join(' → ')}</td>
+      <td class="${t.covered?'covered-yes':'covered-no'}">${t.covered?'Covered':'Gap'}</td>
+    </tr>`).join('');
+  m.appendChild(el(`<table><thead><tr><th>Requirement</th><th>Source Excerpt</th><th>Traces To</th><th>Status</th></tr></thead><tbody>${rows}</tbody></table>`));
+}
+
+function renderArchitecture(){
+  const m = document.getElementById('main');
+  m.appendChild(el(`<div class="view-header"><h2>Architecture</h2><p>Structural overview — request flow, components, and integration points, generated from data.</p></div>`));
+  const arch = DATA.architecture||{};
+
+  m.appendChild(el(`<div class="subhead">Architecture Diagram</div>`));
+  m.appendChild(buildArchitectureDiagram(arch));
+
+  m.appendChild(el(`<div class="subhead">Request Flow</div>`));
+  if((arch.flow||[]).length){
+    const strip = el(`<div class="flow-strip"></div>`);
+    arch.flow.forEach((f,i)=>{
+      strip.appendChild(el(`<div class="flow-box">${esc(f)}</div>`));
+      if(i < arch.flow.length-1) strip.appendChild(el(`<div class="flow-arrow">→</div>`));
+    });
+    m.appendChild(strip);
+  } else { m.appendChild(el(`<div class="empty">No flow defined.</div>`)); }
+
+  m.appendChild(el(`<div class="subhead">Components</div>`));
+  if((arch.components||[]).length){
+    const rows = arch.components.map(c=>`<tr><td>${esc(c.name)}</td><td><span class="pill blue">${esc(c.type)}</span></td><td>${esc(c.description)}</td></tr>`).join('');
+    m.appendChild(el(`<table><thead><tr><th>Component</th><th>Type</th><th>Description</th></tr></thead><tbody>${rows}</tbody></table>`));
+  } else { m.appendChild(el(`<div class="empty">No components identified.</div>`)); }
+
+  m.appendChild(el(`<div class="subhead">Integration Points</div>`));
+  if((arch.integration_points||[]).length){
+    const rows = arch.integration_points.map(i=>`<tr><td>${esc(i.from)}</td><td>${esc(i.to)}</td><td>${esc(i.label||'')}</td><td><span class="pill ${i.type==='async'?'sev-medium':'blue'}">${esc(i.type||'')}</span></td></tr>`).join('');
+    m.appendChild(el(`<table><thead><tr><th>From</th><th>To</th><th>Label</th><th>Type</th></tr></thead><tbody>${rows}</tbody></table>`));
+  } else { m.appendChild(el(`<div class="empty">None identified.</div>`)); }
+}
+
+function renderAssumptions(){
+  const m = document.getElementById('main');
+  m.appendChild(el(`<div class="view-header"><h2>Assumptions</h2><p>Explicitly marked — never treated as confirmed requirements.</p></div>`));
+  if(!DATA.assumptions.length){ m.appendChild(el(`<div class="empty">No assumptions recorded.</div>`)); return; }
+  DATA.assumptions.forEach(a=>{
+    m.appendChild(el(`<div class="a-item"><b class="mono" style="color:var(--moss); font-size:11px;">${esc(a.id)}</b><div>${esc(a.text)}</div><div style="font-size:11.5px; color:var(--ink-soft); margin-top:4px;">Affects: ${(a.story_ids||[]).join(', ')||'—'}</div></div>`));
+  });
+}
+
+function renderDecisions(){
+  const m = document.getElementById('main');
+  m.appendChild(el(`<div class="view-header"><h2>Decisions</h2><p>Only decisions the source doc actually surfaced — not filler.</p></div>`));
+  if(!DATA.decisions.length){ m.appendChild(el(`<div class="empty">No decisions logged yet.</div>`)); return; }
+  DATA.decisions.forEach(dd=>{
+    m.appendChild(el(`<div class="a-item d-item"><span class="status-pill ${(dd.status||'').toLowerCase()}">${esc(dd.status)}</span><b class="mono" style="color:var(--violet); font-size:11px;">${esc(dd.id)}</b><div>${esc(dd.decision)}</div><div style="font-size:11.5px; color:var(--ink-soft); margin-top:4px;">Owner: ${esc(dd.owner||'Unassigned')} · Affects: ${(dd.story_ids||[]).join(', ')||'—'}</div></div>`));
+  });
+}
+
+function renderRisks(){
+  const m = document.getElementById('main');
+  m.appendChild(el(`<div class="view-header"><h2>Risks</h2><p>Specific, nameable risks only — not generic project boilerplate.</p></div>`));
+  if(!DATA.risks.length){ m.appendChild(el(`<div class="empty">No risks logged.</div>`)); return; }
+  const rows = DATA.risks.map(r=>`<tr>
+    <td class="trace-line">${esc(r.id)}</td>
+    <td>${esc(r.risk)}</td>
+    <td><span class="pill sev-${(r.impact||'').toLowerCase()==='high'?'critical':(r.impact||'').toLowerCase()}">${esc(r.impact)}</span></td>
+    <td>${esc(r.probability)}</td>
+    <td>${(r.story_ids||[]).join(', ')||'—'}</td>
+    <td>${esc(r.mitigation)}</td>
+  </tr>`).join('');
+  m.appendChild(el(`<table><thead><tr><th>ID</th><th>Risk</th><th>Impact</th><th>Probability</th><th>Stories</th><th>Mitigation</th></tr></thead><tbody>${rows}</tbody></table>`));
+}
+
+renderRail();
+document.getElementById('main').innerHTML = '';
+RENDERERS[CURRENT_VIEW]();
+</script>
+</body>
+</html>
