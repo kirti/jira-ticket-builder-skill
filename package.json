@@ -1,7 +1,9 @@
 {
   "name": "jira-ticket-builder-skill",
-  "version": "1.0.0",
+  "version": "1.2.0",
   "description": "Turns rough bug reports, feature asks, or full requirements documents into structured Jira tickets or a multi-page requirements portal with diagrams (business flow, architecture, UI flow, customer journey). Ships as a Claude Skill and as portable instructions for any LLM with code execution (ChatGPT, etc.).",
+  "author": "kirti",
+  "license": "MIT",
   "bin": {
     "jira-ticket-builder-skill": "bin/install.js"
   },
@@ -9,10 +11,19 @@
     "skill",
     "prompt",
     "bin",
-    "docs",
     "README.md",
-    "LICENSE"
+    "LICENSE",
+    "CHANGELOG.md"
   ],
+  "scripts": {
+    "test": "npm run test:py && npm run test:node",
+    "test:py": "python3 -m unittest discover -s tests -v",
+    "test:node": "node --test tests/install.test.js tests/render.test.js",
+    "prepublishOnly": "npm test"
+  },
+  "engines": {
+    "node": ">=14.14"
+  },
   "keywords": [
     "claude",
     "claude-skill",
@@ -35,8 +46,6 @@
     "architecture-diagram",
     "requirements-to-jira"
   ],
-  "author": "",
-  "license": "MIT",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/kirti/jira-ticket-builder-skill.git"
@@ -45,7 +54,7 @@
   "bugs": {
     "url": "https://github.com/kirti/jira-ticket-builder-skill/issues"
   },
-  "engines": {
-    "node": ">=14"
+  "devDependencies": {
+    "jsdom": "^24.1.3"
   }
 }

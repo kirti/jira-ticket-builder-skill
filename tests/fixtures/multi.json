@@ -1,0 +1,331 @@
+{
+  "project": {
+    "name": "Checkout Revamp",
+    "source_summary": "Rebuild checkout.",
+    "generated_at": "2026-10-03",
+    "business_objectives": [
+      {
+        "id": "OBJ-001",
+        "text": "Raise conversion",
+        "confidence": "confirmed"
+      }
+    ],
+    "business_actors": [
+      {
+        "id": "ACT-001",
+        "name": "Shopper",
+        "description": "Buys things"
+      }
+    ],
+    "business_flow": [
+      {
+        "step": 1,
+        "actor": "Shopper",
+        "action": "Reviews cart",
+        "system": "Web",
+        "ui_screen": "Cart"
+      },
+      {
+        "step": 2,
+        "actor": "Shopper",
+        "action": "Pays",
+        "system": "Payments",
+        "ui_screen": "Payment",
+        "api": "POST /api/s2"
+      }
+    ]
+  },
+  "business_requirements": [
+    {
+      "id": "BR-001",
+      "text": "Raise conversion by 5%",
+      "confidence": "confirmed"
+    }
+  ],
+  "functional_requirements": [
+    {
+      "id": "FR-001",
+      "text": "Show cart",
+      "confidence": "confirmed"
+    },
+    {
+      "id": "FR-002",
+      "text": "Take card payments",
+      "confidence": "confirmed"
+    },
+    {
+      "id": "FR-003",
+      "text": "Evaluate wallet providers",
+      "confidence": "inferred"
+    }
+  ],
+  "non_functional_requirements": [
+    {
+      "id": "NFR-001",
+      "text": "p95 < 300ms",
+      "category": "performance",
+      "confidence": "inferred"
+    }
+  ],
+  "business_rules": [],
+  "stories": [
+    {
+      "id": "STORY-001",
+      "title": "View cart",
+      "type": "Story",
+      "business_capability": "Checkout",
+      "user_story": "As a shopper I want view cart so that I can pay",
+      "description": "View cart details",
+      "in_scope": [
+        "web"
+      ],
+      "out_of_scope": [
+        "mobile"
+      ],
+      "acceptance_criteria": [
+        {
+          "given": "a cart",
+          "when": "I act",
+          "then": "it works"
+        }
+      ],
+      "technical_context": {
+        "affected_systems": [
+          "Checkout Service"
+        ],
+        "apis": [
+          {
+            "method": "POST",
+            "path": "/api/s1"
+          }
+        ],
+        "ui_spec": {
+          "screen": "Cart",
+          "navigates_to": [
+            {
+              "to": "Payment",
+              "trigger": "Checkout"
+            }
+          ]
+        },
+        "testing": {
+          "unit": [
+            "happy path"
+          ]
+        }
+      },
+      "dependencies": [],
+      "open_question_ids": [],
+      "source_requirement_ids": [
+        "FR-001",
+        "BR-001"
+      ],
+      "status": "Draft"
+    },
+    {
+      "id": "STORY-002",
+      "title": "Pay by card",
+      "type": "Story",
+      "business_capability": "Checkout",
+      "user_story": "As a shopper I want pay by card so that I can pay",
+      "description": "Pay by card details",
+      "in_scope": [
+        "web"
+      ],
+      "out_of_scope": [
+        "mobile"
+      ],
+      "acceptance_criteria": [
+        {
+          "given": "a cart",
+          "when": "I act",
+          "then": "it works"
+        }
+      ],
+      "technical_context": {
+        "affected_systems": [
+          "Checkout Service"
+        ],
+        "apis": [
+          {
+            "method": "POST",
+            "path": "/api/s2"
+          }
+        ],
+        "ui_spec": {
+          "screen": "Payment",
+          "navigates_to": [
+            {
+              "to": "Cart",
+              "trigger": "Back"
+            }
+          ]
+        },
+        "testing": {
+          "unit": [
+            "happy path"
+          ]
+        }
+      },
+      "dependencies": [
+        {
+          "story_id": "STORY-001",
+          "relationship": "depends_on",
+          "reason": "needs cart"
+        },
+        {
+          "story_id": "STORY-003",
+          "relationship": "relates_to",
+          "reason": "wallets later"
+        }
+      ],
+      "open_question_ids": [
+        "Q-001"
+      ],
+      "source_requirement_ids": [
+        "FR-002",
+        "NFR-001"
+      ],
+      "status": "Draft"
+    },
+    {
+      "id": "STORY-003",
+      "title": "Wallet spike",
+      "type": "Spike",
+      "business_capability": "Checkout",
+      "user_story": "As a shopper I want wallet spike so that I can pay",
+      "description": "Wallet spike details",
+      "in_scope": [
+        "web"
+      ],
+      "out_of_scope": [
+        "mobile"
+      ],
+      "acceptance_criteria": [
+        {
+          "given": "a cart",
+          "when": "I act",
+          "then": "it works"
+        }
+      ],
+      "technical_context": {
+        "affected_systems": [
+          "Checkout Service"
+        ],
+        "apis": [
+          {
+            "method": "POST",
+            "path": "/api/s3"
+          }
+        ],
+        "ui_spec": {
+          "screen": "n/a",
+          "navigates_to": []
+        },
+        "testing": {
+          "unit": [
+            "happy path"
+          ]
+        }
+      },
+      "dependencies": [
+        {
+          "story_id": "STORY-002",
+          "relationship": "relates_to",
+          "reason": "dup of above"
+        }
+      ],
+      "open_question_ids": [],
+      "source_requirement_ids": [
+        "FR-003"
+      ],
+      "status": "Draft"
+    }
+  ],
+  "open_questions": [
+    {
+      "id": "Q-001",
+      "question": "Which PSP?",
+      "area": "Backend",
+      "severity": "Critical",
+      "owner": "Unassigned",
+      "impact": "Blocks payments",
+      "story_ids": [
+        "STORY-002"
+      ],
+      "origin": "stated",
+      "status": "Open"
+    }
+  ],
+  "assumptions": [],
+  "decisions": [],
+  "risks": [],
+  "architecture": {
+    "flow": [
+      "Web",
+      "Checkout Service",
+      "Payments"
+    ],
+    "components": [
+      {
+        "name": "Checkout Service",
+        "type": "service",
+        "description": "Orchestrates"
+      }
+    ],
+    "integration_points": [
+      {
+        "from": "Checkout Service",
+        "to": "Payments",
+        "label": "REST",
+        "type": "sync"
+      }
+    ]
+  },
+  "dependencies": [],
+  "traceability": [
+    {
+      "requirement_id": "BR-001",
+      "story_ids": [
+        "STORY-001"
+      ],
+      "covered": true
+    },
+    {
+      "requirement_id": "FR-001",
+      "story_ids": [
+        "STORY-001"
+      ],
+      "covered": true
+    },
+    {
+      "requirement_id": "FR-002",
+      "story_ids": [
+        "STORY-002"
+      ],
+      "covered": true
+    },
+    {
+      "requirement_id": "FR-003",
+      "story_ids": [
+        "STORY-003"
+      ],
+      "covered": true
+    },
+    {
+      "requirement_id": "NFR-001",
+      "story_ids": [
+        "STORY-002"
+      ],
+      "covered": true
+    }
+  ],
+  "readiness": {
+    "business_pct": 100,
+    "requirements_pct": 60,
+    "technical_context_pct": 100,
+    "testing_pct": 100,
+    "traceability_pct": 100,
+    "story_completeness_avg_pct": 95
+  }
+}

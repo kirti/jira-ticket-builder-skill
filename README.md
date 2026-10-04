@@ -18,11 +18,12 @@ by issue type (Bug, Story, Task, Spike, Tech Debt, Security, Incident).
 **Decomposition mode** — hand it a rough requirements document (a product brief, meeting notes, a
 spec with open questions scattered through it) and get back:
 
-- Multiple independently-shippable Jira stories, each traced back to its source requirement
+- Multiple independently-shippable Jira stories, each traced back to its source requirement,
+  plus a CSV that imports them straight into Jira (with an epic and dependency links)
 - An open-questions map (including gaps the model identifies but you didn't ask, clearly marked)
 - A traceability matrix and a delivery-readiness score
 - Risks and decisions logs (only populated when something real is there — no filler)
-- A 12-page HTML portal: Overview, Business Context (+ flow diagram), Customer Journey (swimlane:
+- An HTML portal (one self-contained file, or 12 linked pages): Overview, Business Context (+ flow diagram), Customer Journey (swimlane:
   customer action → UI screen → backend call), Requirements, Stories, Open Questions,
   Traceability, Architecture (+ diagram), UI Flow (+ diagram), Assumptions, Decisions, Risks
 
@@ -56,60 +57,6 @@ questions the source document actually asked:
 
 ![Open Questions](docs/screenshots/open-questions.png)
 
-## Publishing
-
-This repo is prepared but **not yet published anywhere** — here's exactly how to do both.
-
-### 1. Create the GitHub repo
-
-```bash
-gh repo create jira-ticket-builder-skill --public --source=. --remote=origin
-```
-
-(No `gh` CLI? Create the repo manually at github.com/new named `jira-ticket-builder-skill`, then:)
-
-```bash
-git remote add origin https://github.com/kirti/jira-ticket-builder-skill.git
-```
-
-### 2. Update the placeholders
-
-`package.json` has `kirti` in three fields (`repository`, `homepage`, `bugs`).
-Replace them with your actual username before either push or publish:
-
-```bash
-sed -i '' 's/kirti/your-actual-username/g' package.json   # macOS
-sed -i 's/kirti/your-actual-username/g' package.json     # Linux
-```
-
-### 3. Push to GitHub
-
-```bash
-git add -A
-git commit -m "Update repository URLs"
-git push -u origin master
-```
-
-
-### 5. Verify
-
-```bash
-npx jira-ticket-builder-skill@latest --prompt
-```
-
-If that installs cleanly into a scratch directory, the publish worked.
-
-### 6. Add GitHub topics (separate from npm keywords — both matter for discovery)
-
-`package.json`'s `keywords` field feeds npm's search; GitHub has its own separate topic system
-that drives GitHub's own search and topic pages. Set both:
-
-```bash
-gh repo edit --add-topic claude,claude-skill,chatgpt,llm,ai-agent,mcp,jira,atlassian,requirements-engineering,user-stories,agile,scrum,product-management,traceability-matrix,architecture-diagram
-```
-
-(No `gh` CLI? Add topics manually via the gear icon next to "About" on the repo's GitHub page.)
-
 ## Installation
 
 ### Claude Skill
@@ -125,12 +72,26 @@ skill-creation flow.
 
 ### Portable prompt (ChatGPT / other LLMs)
 
-```bash
+```
 npx jira-ticket-builder-skill --prompt
 ```
 
-This additionally installs `jira-ticket-builder-prompt/INSTRUCTIONS.md` alongside the skill
-folder. See [Model support](#model-support) for how to use it.
+This additionally installs `jira-ticket-builder-prompt/INSTRUCTIONS.md` in your current
+directory (deliberately outside `.claude/skills/`, which Claude scans for skills). See
+[Model support](#model-support) for how to use it.
+
+### Installer options
+
+| Option | Effect |
+| --- | --- |
+| `--target <dir>` | Install the skill somewhere other than `.claude/skills/jira-ticket-builder-skill` |
+| `--prompt` | Also install the portable prompt |
+| `--prompt-target <dir>` | Install the portable prompt somewhere other than `./jira-ticket-builder-prompt` |
+| `--force` | Replace an existing install (stale files from older versions are removed) |
+| `--dry-run` | List what would be installed without writing anything |
+| `--version`, `--help` | Print version / usage |
+
+To upgrade an existing install: `npx jira-ticket-builder-skill@latest --force`.
 
 ### Manual install
 
@@ -158,37 +119,98 @@ jira-ticket-builder-skill/
 ├── skill/                       # Claude Skill (SKILL.md + assets + references)
 │   ├── SKILL.md
 │   ├── assets/
-│   │   ├── full-template.md         # Full enterprise ticket template
-│   │   ├── quick-template.md        # Quick-mode ticket template
-│   │   ├── story-template.md        # Dedicated Story template
+│   │   ├── full-template.md          # Full enterprise ticket template
+│   │   ├── quick-template.md         # Quick-mode ticket template
+│   │   ├── story-template.md         # Dedicated Story template
 │   │   ├── portal-page-template.html # Shared multi-page portal template (with diagrams)
-│   │   ├── build_portal.py          # Generates the 12-page portal from decomposition JSON
-│   │   └── quality_gate.py          # Validates decomposition JSON before portal generation
+│   │   ├── build_portal.py           # Generates the portal (single file or 12 pages) from decomposition JSON
+│   │   ├── quality_gate.py           # Validates decomposition JSON; computes readiness metrics
+│   │   ├── decomposition.schema.json # Machine-readable schema the gate validates against
+│   │   └── export_jira.py            # Jira CSV import file + Markdown stories
 │   └── references/
-│       ├── section-guide.md         # Which full-template sections apply per issue type
-│       └── decomposition-schema.md  # JSON schema for decomposition mode
+│       ├── section-guide.md          # Which full-template sections apply per issue type
+│       └── decomposition-schema.md   # JSON schema for decomposition mode
 ├── prompt/
 │   └── INSTRUCTIONS.md          # Portable version of SKILL.md for non-Claude LLMs
 ├── bin/
 │   └── install.js               # npx installer
+├── tests/                       # Python + Node test suites (not shipped to npm)
 ├── docs/
-│   └── screenshots/              # Example portal screenshots used in this README
+│   └── screenshots/             # README screenshots (not shipped to npm)
+├── .github/workflows/ci.yml     # Runs the tests on every push / PR
+├── CHANGELOG.md
 ├── package.json
 ├── LICENSE
 └── README.md
 ```
 
-## Known limitation
+## Running the scripts by hand
 
-The portal is a set of 12 linked HTML files using relative links between them
-(`business-context.html`, `stories.html`, etc.). **Keep all 12 files together in one folder** —
-if you only save one file in isolation, sidebar navigation between pages won't resolve. When the
-skill generates a portal, it packages the output as a `.zip` for exactly this reason; extract it
-before opening `index.html`.
+Everything the skill does after writing the decomposition JSON is plain Python 3 with no
+dependencies, so you can run it yourself or in CI.
+
+**Check the data** — validates against `decomposition.schema.json` and runs 16 consistency checks
+(unique IDs, every reference resolves, traceability agrees with the stories, no circular
+dependencies, …). Exits non-zero on failure.
+
+```
+python3 skill/assets/quality_gate.py data.json            # --json for a machine-readable report
+```
+
+**Build the portal**
+
+```
+python3 skill/assets/build_portal.py skill/assets/portal-page-template.html data.json portal/ --check --single-file
+```
+
+| Option | Effect |
+| --- | --- |
+| `--single-file` | One self-contained `index.html` with all 12 views (switch views via `#stories`, `#risks`, …). Nothing to unzip. |
+| `--check` | Run the quality gate first; nothing is written if it fails |
+| `--zip PATH` | Package the output into a single archive |
+| `--inline` | Multi-page mode only: embed the data in every page instead of a shared `portal-data.js` |
+| `--model-metrics` | Keep the readiness / completeness numbers written in the data instead of recomputing them |
+
+Readiness percentages, per-story completeness (with a list of what's missing) and traceability
+coverage are calculated from the data rather than taken from the model's estimates — see
+`skill/references/decomposition-schema.md` for the formulas. All values are escaped before they
+reach the page, so text pasted from requirements documents can't break the portal.
+
+Without `--single-file` you get 12 linked pages plus `portal-data.js`; a 1,000-story portal is
+1.7 MB instead of the 14 MB it was when every page embedded the data. Keep those files together
+in one folder — the pages load the data and link to each other by relative path.
+
+**Export to Jira**
+
+```
+python3 skill/assets/export_jira.py data.json --csv jira-import.csv --md stories.md
+```
+
+The CSV imports through Jira's CSV importer: one Epic plus a row per story, descriptions in Jira
+markup (user story, acceptance criteria, scope, UI, APIs, testing, open questions, source
+requirements), labels, the epic as Parent, and "blocks" / "relates" links between stories. When
+importing, map Issue Id → Issue Id, Parent → Parent, Link "blocks" → Blocks, Link "relates" →
+Relates, and the rest to the field of the same name.
+
+| Option | Effect |
+| --- | --- |
+| `--type-map A=B` | Map a story type to a Jira issue type (defaults: Spike/Task → Task, Technical Story/Enabler → Story) |
+| `--no-epic` / `--epic-name TEXT` | Skip the epic, or name it |
+| `--label TEXT` | Add a label to every row |
+
+## Development
+
+```
+npm install      # dev dependency: jsdom, for the render tests
+npm test         # Python unit tests + installer tests + renders all 12 portal pages in jsdom
+```
+
+`npm publish` runs the full test suite first (`prepublishOnly`). CI runs the same suite on
+Node 18/20/22 for every push and pull request.
 
 ## Contributing
 
-Issues and PRs welcome once this is published.
+Issues and PRs welcome — please run `npm test` before opening a PR.
 
 ## License
 

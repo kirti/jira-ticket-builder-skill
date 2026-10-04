@@ -1,7 +1,8 @@
 # Decomposition Output Schema
 
 Decomposition mode (rough requirements doc → multiple stories) produces one JSON object matching
-this schema. Keep it scoped — this is deliberately smaller than a full "architecture + UI +
+this schema. A machine-readable copy lives in `assets/decomposition.schema.json`, and
+`assets/quality_gate.py` validates against it — if you change one, change the other. Keep it scoped — this is deliberately smaller than a full "architecture + UI +
 backend + CI/CD" spec generator. Technical context lives *inside* each story, not as separate
 top-level views.
 
@@ -165,7 +166,16 @@ top-level views.
   both unset for steps that are purely one system calling another with no UI or nameable API
   (e.g. an internal audit write) — the diagram renders those as an intentional gap in that lane,
   not an error.
-- **`completeness_pct` per story and `readiness` percentages** are honest estimates of
-  completeness, not a fixed formula — reflect the actual gaps you found (e.g. a story with no
-  technical_context filled in should not read 100% complete).
+- **`completeness_pct` per story and `readiness` percentages** are recomputed from the data by
+  `build_portal.py` (pass `--model-metrics` to keep yours), so treat what you write as an
+  estimate. The formulas, from `quality_gate.py`:
+  - story completeness = share of 8 items present: user story, description, acceptance criteria,
+    a source requirement, an in-scope list, technical context (affected systems or APIs), at least
+    one test, and no open Critical/High question linked to the story;
+  - `business_pct` = share of objectives / actors / business flow / business requirements present;
+  - `requirements_pct` = share of requirements marked `confirmed`;
+  - `technical_context_pct` / `testing_pct` = share of stories with technical context / tests;
+  - `traceability_pct` = share of requirements cited by at least one story;
+  - `story_completeness_avg_pct` = mean story completeness.
+  Each traceability row's `covered` is likewise set from whether any story cites the requirement.
 - Keep IDs stable and sequential (BR-001, BR-002...) so cross-references in the portal resolve.

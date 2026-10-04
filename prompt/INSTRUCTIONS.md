@@ -134,15 +134,24 @@ doesn't reciprocate in its own `open_question_ids`) has appeared on every decomp
 so far — a script catches it reliably where re-implementing the check freehand each time doesn't.
 
 ```
-python3 assets/quality_gate.py <data_json_path>
+python3 assets/quality_gate.py <data_json_path>          # add --json for a machine-readable report
 ```
 
-It checks: every requirement traced, every story has acceptance criteria, open-question/story
-cross-links are reciprocal, every question has severity + owner, every story has a source
-requirement link, every requirement has a confidence marking, no story has fully blank
-technical_context, and no architecture integration_point references a name absent from
-`flow`/`components`. Exits non-zero on any failure — fix the data and re-run before moving to D6,
-don't generate the portal on a failing gate.
+It validates the data against `assets/decomposition.schema.json` (required fields, ID formats,
+allowed values such as severity and story type), then checks: every requirement traced, every
+story has acceptance criteria, open-question/story cross-links are reciprocal in both directions,
+every question has severity + owner, every story has a source requirement link, every requirement
+has a confidence marking, no story has fully blank technical_context, no orphan architecture
+edges, all IDs are unique, every cross-reference (requirement, question, rule, story) resolves,
+the traceability matrix agrees with the stories' `source_requirement_ids`, and story dependencies
+have no cycles. Exits non-zero on any FAIL — fix the data and re-run before moving to D6, don't
+generate the portal on a failing gate. WARN lines (a customer-journey `ui_screen` that matches no
+story, estimated readiness far from what the data shows) don't block, but mention them.
+
+**Readiness and completeness are computed, not estimated.** `build_portal.py` recalculates
+`readiness`, each story's `completeness_pct` (with the list of what's missing) and each
+traceability row's `covered` flag from the data, so you don't need to agonise over those numbers.
+Fill them in with your best estimate; the portal shows the computed values.
 
 ### D6 — Build the data + portal
 
@@ -158,51 +167,44 @@ output that stalls or gets truncated.
    there are many), then `open_questions`/`assumptions`/`decisions`/`risks`/`architecture`/
    `traceability`/`readiness`. Use Python's `json` module to assemble and validate
    (`json.load`) rather than hand-typing one huge JSON literal.
-2. **Generate the portal as linked HTML pages, not one page.** Copy
-   `assets/portal-page-template.html` and `assets/build_portal.py` into the workspace as-is —
-   don't retype them. Run:
+2. **Generate the portal with the script — never retype the template.** Copy the whole
+   `assets/` folder into the workspace as-is (`build_portal.py`, `quality_gate.py`,
+   `decomposition.schema.json`, `export_jira.py` and `portal-page-template.html` must sit
+   together). Run:
    ```
-   python3 build_portal.py <template_path> <data_json_path> <output_dir>
+   python3 build_portal.py portal-page-template.html <data_json_path> <output_dir> --check --single-file
    ```
-   This produces `index.html` (Overview), `business-context.html` (includes a Business Flow
-   diagram), `customer-journey.html` (swimlane diagram connecting customer action → UI screen →
-   backend call per step), `requirements.html`, `stories.html`, `open-questions.html`,
-   `traceability.html`, `architecture.html` (includes an Architecture diagram), `ui-flow.html`
-   (screen-to-screen navigation diagram), `assumptions.html`, `decisions.html`, `risks.html` —
-   one file per iteration inside the script, which is naturally chunked rather than one massive
-   write. Each page embeds the full dataset and links to the others via its sidebar nav (real
-   `<a href>` page loads, not a JS view-switcher) — the sidebar nav present on every page *is* the
-   map connecting them, so there's no separate index/map file to build beyond `index.html` itself.
+   `--check` runs the D5 gate first and refuses to build on failure. `--single-file` writes one
+   self-contained `index.html` holding all 12 views — Overview, Business Context (with a Business
+   Flow diagram), Customer Journey (swimlane: customer action → UI screen → backend call),
+   Requirements, Stories, Open Questions, Traceability, Architecture (with diagram), UI Flow (with
+   diagram), Assumptions, Decisions, Risks — switched from the sidebar via the URL hash
+   (`index.html#stories`). It works when opened on its own, so there is nothing to unzip.
+
+   Only if the person asks for separate pages (e.g. to host as a small site), drop
+   `--single-file` and add `--zip <output_dir>.zip`: that writes 12 linked pages plus a shared
+   `portal-data.js` and zips them, because pages opened individually from `present_files`
+   can't reach their siblings. In that case present the zip and tell the person to extract it
+   before opening `index.html`.
 3. **Never write literal `</script>` text anywhere inside a script tag's own content**
    (including comments) — the HTML parser closes the tag on that substring regardless of context
-   and silently breaks the page. If you need to reference a script tag in a comment, don't write
-   the literal closing-tag substring.
-4. Spot-check at least `index.html` and `stories.html` render correctly (well-formed HTML, JSON
-   parses, nav links resolve to the right filenames) before presenting — don't hand over
-   unverified files.
-5. Also write the stories out as markdown (one file, using `assets/story-template.md`'s structure
-   per story, or a condensed per-story block) — the portal is for exploring, the markdown is for
-   pasting into Jira. Build this incrementally per story for large decompositions too.
-6. **Zip the 12 HTML pages into a single archive before presenting them** — do not present the
-   loose HTML files individually. The pages link to each other with relative hrefs
-   (`business-context.html`, `stories.html`, etc.), and `present_files` serves each presented file
-   as an isolated resource, not as siblings in a shared directory — so a person clicking the
-   sidebar nav on a file opened straight from a `present_files` card will find most links don't
-   go anywhere, even though the pages themselves are correct. Zipping means the person downloads
-   once, extracts to one folder, and opens `index.html` from there, where the relative links
-   resolve normally because the files are genuinely sitting next to each other on disk. Use
-   Python's `zipfile` module:
-   ```python
-   import zipfile, os
-   with zipfile.ZipFile(output_path, 'w', zipfile.ZIP_DEFLATED) as z:
-       for f in sorted(os.listdir(portal_dir)):
-           z.write(os.path.join(portal_dir, f), f)
+   and silently breaks the page. The build script escapes the data for you; this rule is for
+   anything you write by hand.
+4. Spot-check the output (the file exists, the build printed no errors) before presenting —
+   don't hand over unverified files.
+5. **Export the stories for Jira with the script:**
    ```
-   Present the `.zip` (plus the markdown file) via `present_files`, and say explicitly in your
-   response that the person needs to extract it before opening `index.html` — don't let them
-   discover that by hitting a dead link.
-7. Save the zip and the markdown to the outputs directory and present them, leading with the zip
-   since that's the entry point.
+   python3 export_jira.py <data_json_path> --csv <name>-jira-import.csv --md <name>-stories.md
+   ```
+   The CSV imports straight into Jira (one Epic plus a row per story, descriptions in Jira
+   markup, labels, Parent = the epic, "blocks"/"relates" links between stories). Use
+   `--type-map Spike=Spike` if the person's Jira project has that issue type, `--no-epic` to skip
+   the epic, `--label <text>` to tag every row. The Markdown file is the same content for review or
+   copy-paste. Tell the person how to map the columns on import: Issue Id → Issue Id, Parent →
+   Parent, Link "blocks" → Blocks, Link "relates" → Relates, everything else to the field of the
+   same name.
+6. Save the portal, the CSV and the Markdown to the outputs directory and present them, leading
+   with the portal since that's the entry point.
 
 Flag the quality gate results and the 3 most important gaps/open questions in your written
 response — don't make the user hunt through the portal to find out something's missing.

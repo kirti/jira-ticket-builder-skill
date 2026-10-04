@@ -170,10 +170,14 @@ const VIEWS = [
 ];
 
 /* Set by the build script — which view this specific file renders. */
-const CURRENT_VIEW = "__CURRENT_VIEW__";
+let CURRENT_VIEW = "__CURRENT_VIEW__";
+/* "__single__" means all views live in this one file and are switched via the URL hash
+   (#stories, #risks, ...) instead of separate .html pages. */
+const SINGLE_FILE = CURRENT_VIEW === "__single__";
+function viewHref(v){ return SINGLE_FILE ? '#'+v.id : v.file; }
 
 function el(html){ const d=document.createElement('div'); d.innerHTML=html.trim(); return d.firstChild; }
-function esc(s){ return (s==null?'':s).toString().replace(/[&<>]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c])); }
+function esc(s){ return (s==null?'':s).toString().replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 function confBadge(c){ return `<span class="conf-badge ${c==='confirmed'?'confirmed':'inferred'}">${c==='confirmed'?'CONFIRMED':'INFERRED'}</span>`; }
 
 function renderRail(){
@@ -181,7 +185,7 @@ function renderRail(){
   rail.innerHTML = `<div class="rail-title"><div class="mono">REQ.PORTAL</div><h1>${esc(DATA.project.name||'Requirements Portal')}</h1></div>`;
   VIEWS.forEach((v,i)=>{
     const isActive = v.id === CURRENT_VIEW;
-    const item = el(`<a class="rail-item ${isActive?'active':''}" href="${v.file}"><span class="num">${String(i+1).padStart(2,'0')}</span>${v.label}</a>`);
+    const item = el(`<a class="rail-item ${isActive?'active':''}" href="${viewHref(v)}"><span class="num">${String(i+1).padStart(2,'0')}</span>${v.label}</a>`);
     rail.appendChild(item);
   });
 }
@@ -216,8 +220,8 @@ function renderOverview(){
     ['Traceability',r.traceability_pct],['Avg. Story Completeness',r.story_completeness_avg_pct]];
   const rHtml = rows.map(([label,pct])=>`
     <div class="r-row"><div class="r-label">${label}</div>
-      <div class="r-bar"><div class="r-fill" style="width:${pct||0}%"></div></div>
-      <div class="r-pct mono">${pct||0}%</div></div>`).join('');
+      <div class="r-bar"><div class="r-fill" style="width:${Number(pct)||0}%"></div></div>
+      <div class="r-pct mono">${Number(pct)||0}%</div></div>`).join('');
   m.appendChild(el(`<div class="readiness"><h3>Delivery Readiness</h3>${rHtml}</div>`));
 }
 
@@ -240,7 +244,7 @@ function renderBusiness(){
 
   m.appendChild(el(`<div class="subhead">Business Rules</div>`));
   (DATA.business_rules||[]).length
-    ? (DATA.business_rules||[]).forEach(r=>m.appendChild(el(`<div class="req-item"><div class="id">${esc(r.id)}</div><div class="body">${esc(r.text)}${confBadge(r.confidence)}<div class="src-excerpt">Affects: ${(r.story_ids||[]).join(', ')||'—'}</div></div></div>`)))
+    ? (DATA.business_rules||[]).forEach(r=>m.appendChild(el(`<div class="req-item"><div class="id">${esc(r.id)}</div><div class="body">${esc(r.text)}${confBadge(r.confidence)}<div class="src-excerpt">Affects: ${esc((r.story_ids||[]).join(', '))||'—'}</div></div></div>`)))
     : m.appendChild(el(`<div class="empty">No business rules extracted.</div>`));
 
   m.appendChild(el(`<div class="subhead">Business Flow Diagram</div>`));
@@ -248,7 +252,7 @@ function renderBusiness(){
 
   m.appendChild(el(`<div class="subhead">Business Flow (Detail)</div>`));
   (p.business_flow||[]).length
-    ? (p.business_flow||[]).forEach(f=>m.appendChild(el(`<div class="flow-step"><b>${f.step}.</b> ${esc(f.actor)} → ${esc(f.action)} <span style="color:var(--ink-soft);">(${esc(f.system)})</span></div>`)))
+    ? (p.business_flow||[]).forEach(f=>m.appendChild(el(`<div class="flow-step"><b>${esc(f.step)}.</b> ${esc(f.actor)} → ${esc(f.action)} <span style="color:var(--ink-soft);">(${esc(f.system)})</span></div>`)))
     : m.appendChild(el(`<div class="empty">No process flow described in source.</div>`));
 }
 
@@ -657,7 +661,7 @@ function renderStories(){
     if(!list.length){ grid.appendChild(el(`<div class="empty">No stories match.</div>`)); return; }
     list.forEach(s=>{
       const oqCount = (s.open_question_ids||[]).length;
-      const pct = s.completeness_pct||0;
+      const pct = Number(s.completeness_pct)||0;
       const card = el(`
         <div class="story-card">
           <div class="sid mono">${esc(s.id)}</div>
@@ -667,7 +671,7 @@ function renderStories(){
             <span>${(s.acceptance_criteria||[]).length} AC</span>
             ${oqCount ? `<span class="oq-flag">⚑ ${oqCount} open</span>` : ''}
           </div>
-          <div class="complete-bar"><div class="complete-fill" style="width:${pct}%"></div></div>
+          <div class="complete-bar"><div class="complete-fill" style="width:${Number(pct)||0}%"></div></div>
         </div>`);
       card.onclick = ()=>openStoryDrawer(s);
       grid.appendChild(card);
@@ -692,12 +696,13 @@ function openStoryDrawer(s){
 
   d.innerHTML = `
     <button class="close" onclick="closeDrawer()">&times;</button>
-    <div class="sid mono" style="color:var(--blue); font-size:12px;">${esc(s.id)} · ${s.completeness_pct||0}% complete</div>
+    <div class="sid mono" style="color:var(--blue); font-size:12px;">${esc(s.id)} · ${Number(s.completeness_pct)||0}% complete</div>
+    ${(s.completeness_missing||[]).length ? `<div style="font-size:11.5px; color:var(--amber); margin-top:2px;">Missing: ${esc(s.completeness_missing.join(', '))}</div>` : ''}
     <h3>${esc(s.title)}</h3>
     <div class="type-badge">${esc(s.type)}</div>
 
     <div class="trace-thread">
-      <div class="t-node"><div class="t-label">Source Requirement</div>${(s.source_requirement_ids||[]).join(', ')||'—'}</div>
+      <div class="t-node"><div class="t-label">Source Requirement</div>${esc((s.source_requirement_ids||[]).join(', '))||'—'}</div>
       <div class="t-node"><div class="t-label">Story</div>${esc(s.id)}</div>
       <div class="t-node"><div class="t-label">Acceptance Criteria</div>${(s.acceptance_criteria||[]).length} defined</div>
     </div>
@@ -712,9 +717,9 @@ function openStoryDrawer(s){
     <div class="sec"><div class="sec-label">UI / UX</div>
       ${ui.screen && ui.screen!=='n/a' ? `<ul>
         <li><b>Screen:</b> ${esc(ui.screen)}</li>
-        <li><b>Components:</b> ${(ui.components||[]).join(', ')||'—'}</li>
-        <li><b>Fields:</b> ${(ui.fields||[]).join(', ')||'—'}</li>
-        <li><b>States:</b> ${(ui.states||[]).join(', ')||'—'}</li>
+        <li><b>Components:</b> ${esc((ui.components||[]).join(', '))||'—'}</li>
+        <li><b>Fields:</b> ${esc((ui.fields||[]).join(', '))||'—'}</li>
+        <li><b>States:</b> ${esc((ui.states||[]).join(', '))||'—'}</li>
       </ul>` : '<div class="empty">No UI surface for this story.</div>'}
     </div>
 
@@ -722,25 +727,25 @@ function openStoryDrawer(s){
 
     <div class="sec"><div class="sec-label">Technical Context</div>
       <ul>
-        <li><b>Affected systems:</b> ${(tc.affected_systems||[]).join(', ')||'none identified'}</li>
-        <li><b>Data:</b> ${(tc.data||[]).join(', ')||'none identified'}</li>
-        <li><b>Security:</b> ${(tc.security||[]).join(', ')||'none identified'}</li>
+        <li><b>Affected systems:</b> ${esc((tc.affected_systems||[]).join(', '))||'none identified'}</li>
+        <li><b>Data:</b> ${esc((tc.data||[]).join(', '))||'none identified'}</li>
+        <li><b>Security:</b> ${esc((tc.security||[]).join(', '))||'none identified'}</li>
       </ul>
     </div>
 
     <div class="sec"><div class="sec-label">Testing</div>
       <ul>
-        <li><b>Unit:</b> ${(testing.unit||[]).join(', ')||'—'}</li>
-        <li><b>Integration:</b> ${(testing.integration||[]).join(', ')||'—'}</li>
-        <li><b>API:</b> ${(testing.api||[]).join(', ')||'—'}</li>
-        <li><b>E2E:</b> ${(testing.e2e||[]).join(', ')||'—'}</li>
+        <li><b>Unit:</b> ${esc((testing.unit||[]).join(', '))||'—'}</li>
+        <li><b>Integration:</b> ${esc((testing.integration||[]).join(', '))||'—'}</li>
+        <li><b>API:</b> ${esc((testing.api||[]).join(', '))||'—'}</li>
+        <li><b>E2E:</b> ${esc((testing.e2e||[]).join(', '))||'—'}</li>
       </ul>
     </div>
 
     <div class="sec"><div class="sec-label">CI/CD Notes</div>${(tc.cicd||[]).length ? `<ul>${tc.cicd.map(c=>`<li>${esc(c)}</li>`).join('')}</ul>` : '<div class="empty">None specific to this story.</div>'}</div>
 
     <div class="sec"><div class="sec-label">Open Questions Affecting This Story</div>
-      ${relatedQ.length ? relatedQ.map(q=>`<div class="oq-row ${q.origin==='ai_identified'?'ai':''}"><div class="q-text">${esc(q.question)}</div><div class="q-meta"><span class="pill sev-${(q.severity||'').toLowerCase()}">${esc(q.severity||'')}</span><span>Owner: ${esc(q.owner||'Unassigned')}</span></div></div>`).join('') : '<div class="empty">None</div>'}
+      ${relatedQ.length ? relatedQ.map(q=>`<div class="oq-row ${q.origin==='ai_identified'?'ai':''}"><div class="q-text">${esc(q.question)}</div><div class="q-meta"><span class="pill sev-${esc((q.severity||'').toLowerCase())}">${esc(q.severity||'')}</span><span>Owner: ${esc(q.owner||'Unassigned')}</span></div></div>`).join('') : '<div class="empty">None</div>'}
     </div>
     <div class="sec"><div class="sec-label">Dependencies & Relationships</div>${depHtml}</div>
   `;
@@ -761,16 +766,16 @@ function renderQuestions(){
   const sorted = [...DATA.open_questions].sort((a,b)=>(order[a.severity]??9)-(order[b.severity]??9));
   sorted.forEach(q=>{
     m.appendChild(el(`
-      <div class="oq-row ${q.origin==='ai_identified'?'ai':''} sev-${(q.severity||'').toLowerCase()}">
+      <div class="oq-row ${q.origin==='ai_identified'?'ai':''} sev-${esc((q.severity||'').toLowerCase())}">
         ${q.origin==='ai_identified' ? '<span class="ai-tag">AI-IDENTIFIED</span>' : ''}
         <div class="q-text mono" style="font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--amber);">${esc(q.id)}</div>
         <div class="q-text">${esc(q.question)}</div>
         <div class="q-meta">
           <span class="pill blue">${esc(q.area)}</span>
-          <span class="pill sev-${(q.severity||'').toLowerCase()}">${esc(q.severity||'Unrated')}</span>
+          <span class="pill sev-${esc((q.severity||'').toLowerCase())}">${esc(q.severity||'Unrated')}</span>
           <span>Owner: ${esc(q.owner||'Unassigned')}</span>
           <span>${esc(q.impact||'')}</span>
-          <span>Affects: ${(q.story_ids||[]).join(', ')||'—'}</span>
+          <span>Affects: ${esc((q.story_ids||[]).join(', '))||'—'}</span>
         </div>
       </div>`));
   });
@@ -784,7 +789,7 @@ function renderTraceability(){
     <tr>
       <td class="trace-line">${esc(t.requirement_id)}</td>
       <td style="font-style:italic; color:var(--ink-soft);">${esc(t.source_excerpt||'—')}</td>
-      <td>${(t.story_ids||[]).join(' → ')}</td>
+      <td>${esc((t.story_ids||[]).join(' → '))}</td>
       <td class="${t.covered?'covered-yes':'covered-no'}">${t.covered?'Covered':'Gap'}</td>
     </tr>`).join('');
   m.appendChild(el(`<table><thead><tr><th>Requirement</th><th>Source Excerpt</th><th>Traces To</th><th>Status</th></tr></thead><tbody>${rows}</tbody></table>`));
@@ -826,7 +831,7 @@ function renderAssumptions(){
   m.appendChild(el(`<div class="view-header"><h2>Assumptions</h2><p>Explicitly marked — never treated as confirmed requirements.</p></div>`));
   if(!DATA.assumptions.length){ m.appendChild(el(`<div class="empty">No assumptions recorded.</div>`)); return; }
   DATA.assumptions.forEach(a=>{
-    m.appendChild(el(`<div class="a-item"><b class="mono" style="color:var(--moss); font-size:11px;">${esc(a.id)}</b><div>${esc(a.text)}</div><div style="font-size:11.5px; color:var(--ink-soft); margin-top:4px;">Affects: ${(a.story_ids||[]).join(', ')||'—'}</div></div>`));
+    m.appendChild(el(`<div class="a-item"><b class="mono" style="color:var(--moss); font-size:11px;">${esc(a.id)}</b><div>${esc(a.text)}</div><div style="font-size:11.5px; color:var(--ink-soft); margin-top:4px;">Affects: ${esc((a.story_ids||[]).join(', '))||'—'}</div></div>`));
   });
 }
 
@@ -835,7 +840,7 @@ function renderDecisions(){
   m.appendChild(el(`<div class="view-header"><h2>Decisions</h2><p>Only decisions the source doc actually surfaced — not filler.</p></div>`));
   if(!DATA.decisions.length){ m.appendChild(el(`<div class="empty">No decisions logged yet.</div>`)); return; }
   DATA.decisions.forEach(dd=>{
-    m.appendChild(el(`<div class="a-item d-item"><span class="status-pill ${(dd.status||'').toLowerCase()}">${esc(dd.status)}</span><b class="mono" style="color:var(--violet); font-size:11px;">${esc(dd.id)}</b><div>${esc(dd.decision)}</div><div style="font-size:11.5px; color:var(--ink-soft); margin-top:4px;">Owner: ${esc(dd.owner||'Unassigned')} · Affects: ${(dd.story_ids||[]).join(', ')||'—'}</div></div>`));
+    m.appendChild(el(`<div class="a-item d-item"><span class="status-pill ${esc((dd.status||'').toLowerCase())}">${esc(dd.status)}</span><b class="mono" style="color:var(--violet); font-size:11px;">${esc(dd.id)}</b><div>${esc(dd.decision)}</div><div style="font-size:11.5px; color:var(--ink-soft); margin-top:4px;">Owner: ${esc(dd.owner||'Unassigned')} · Affects: ${esc((dd.story_ids||[]).join(', '))||'—'}</div></div>`));
   });
 }
 
@@ -846,17 +851,29 @@ function renderRisks(){
   const rows = DATA.risks.map(r=>`<tr>
     <td class="trace-line">${esc(r.id)}</td>
     <td>${esc(r.risk)}</td>
-    <td><span class="pill sev-${(r.impact||'').toLowerCase()==='high'?'critical':(r.impact||'').toLowerCase()}">${esc(r.impact)}</span></td>
+    <td><span class="pill sev-${(r.impact||'').toLowerCase()==='high'?'critical':esc((r.impact||'').toLowerCase())}">${esc(r.impact)}</span></td>
     <td>${esc(r.probability)}</td>
-    <td>${(r.story_ids||[]).join(', ')||'—'}</td>
+    <td>${esc((r.story_ids||[]).join(', '))||'—'}</td>
     <td>${esc(r.mitigation)}</td>
   </tr>`).join('');
   m.appendChild(el(`<table><thead><tr><th>ID</th><th>Risk</th><th>Impact</th><th>Probability</th><th>Stories</th><th>Mitigation</th></tr></thead><tbody>${rows}</tbody></table>`));
 }
 
-renderRail();
-document.getElementById('main').innerHTML = '';
-RENDERERS[CURRENT_VIEW]();
+function showView(){
+  if(SINGLE_FILE){
+    const id = (location.hash||'').slice(1);
+    CURRENT_VIEW = RENDERERS[id] ? id : 'overview';
+    closeDrawer();
+  }
+  const v = VIEWS.find(x=>x.id===CURRENT_VIEW);
+  document.title = (DATA.project.name||'Requirements Portal') + (v ? ' — ' + v.label : '');
+  renderRail();
+  document.getElementById('main').innerHTML = '';
+  RENDERERS[CURRENT_VIEW]();
+  if(SINGLE_FILE) window.scrollTo(0,0);
+}
+if(SINGLE_FILE) window.addEventListener('hashchange', showView);
+showView();
 </script>
 </body>
 </html>

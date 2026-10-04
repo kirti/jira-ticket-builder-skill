@@ -1,0 +1,167 @@
+{
+  "project": {
+    "name": "Fixture",
+    "source_summary": "x",
+    "generated_at": "",
+    "business_objectives": [],
+    "business_actors": [
+      {
+        "name": "Ops",
+        "description": "say \"hi\" & <b>bye</b>"
+      }
+    ],
+    "business_flow": [
+      {
+        "step": 1,
+        "actor": "User",
+        "action": "logs in",
+        "system": "Auth",
+        "ui_screen": "Login"
+      }
+    ]
+  },
+  "business_requirements": [
+    {
+      "id": "BR-1",
+      "text": "Reduce churn",
+      "confidence": "confirmed"
+    }
+  ],
+  "functional_requirements": [
+    {
+      "id": "FR-1",
+      "text": "Login </script><img src=x onerror=alert(1)>",
+      "confidence": "confirmed"
+    }
+  ],
+  "non_functional_requirements": [
+    {
+      "id": "NFR-1",
+      "category": "performance",
+      "text": "p95 < 200ms",
+      "confidence": "inferred"
+    }
+  ],
+  "business_rules": [],
+  "stories": [
+    {
+      "id": "STORY-001",
+      "title": "Login",
+      "type": "Story",
+      "acceptance_criteria": [
+        {
+          "given": "a registered user",
+          "when": "they log in",
+          "then": "they see the dashboard"
+        }
+      ],
+      "source_requirement_ids": [
+        "FR-1",
+        "BR-1",
+        "NFR-1"
+      ],
+      "open_question_ids": [
+        "Q-1"
+      ],
+      "technical_context": {
+        "affected_systems": [
+          "Auth"
+        ],
+        "apis": [
+          {
+            "method": "POST",
+            "path": "/login",
+            "request": "creds",
+            "response": "token",
+            "auth": "none"
+          }
+        ],
+        "ui_spec": {
+          "screen": "Login",
+          "navigates_to": [
+            {
+              "to": "Dashboard",
+              "trigger": "Submit"
+            }
+          ]
+        },
+        "testing": {
+          "unit": [
+            "validates input"
+          ]
+        }
+      },
+      "user_story": "As a user I want to log in so that I can see my dashboard",
+      "description": "Login flow",
+      "in_scope": [
+        "Email login"
+      ],
+      "out_of_scope": [
+        "SSO"
+      ]
+    }
+  ],
+  "open_questions": [
+    {
+      "id": "Q-1",
+      "question": "SSO?",
+      "severity": "High",
+      "owner": "Unassigned",
+      "story_ids": [
+        "STORY-001"
+      ],
+      "origin": "stated"
+    }
+  ],
+  "assumptions": [],
+  "decisions": [],
+  "risks": [],
+  "architecture": {
+    "flow": [
+      "Web"
+    ],
+    "components": [
+      {
+        "name": "Auth"
+      }
+    ],
+    "integration_points": [
+      {
+        "from": "Web",
+        "to": "Auth"
+      }
+    ]
+  },
+  "dependencies": [],
+  "traceability": [
+    {
+      "requirement_id": "BR-1",
+      "story_ids": [
+        "STORY-001"
+      ],
+      "covered": true
+    },
+    {
+      "requirement_id": "FR-1",
+      "story_ids": [
+        "STORY-001"
+      ],
+      "covered": true
+    },
+    {
+      "requirement_id": "NFR-1",
+      "story_ids": [
+        "STORY-001"
+      ],
+      "covered": true
+    }
+  ],
+  "readiness": {
+    "business_pct": 80,
+    "requirements_pct": 80,
+    "technical_context_pct": 80,
+    "testing_pct": 100,
+    "traceability_pct": 100,
+    "story_completeness_avg_pct": 80
+  }
+}
